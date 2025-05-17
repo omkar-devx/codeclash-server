@@ -2,9 +2,25 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { User } from '../models/user.model.js';
-import { SessionSchema } from '../models/sessionSchema.model.js';
+import { UserSession } from '../models/sessionSchema.model.js';
 import { UserProfile } from '../models/userProfile.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
+
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      'something went wrong while create accesstoken and refreshtoken',
+    );
+  }
+};
 
 const userRegsiter = asyncHandler(async (req, res) => {
   // get user details from frontend
@@ -35,7 +51,6 @@ const userRegsiter = asyncHandler(async (req, res) => {
     if (fileSize > 100000) {
       throw new ApiError(400, 'uploaded image required less than 100kb');
     }
-    console.log('file Size: ', fileSize);
     avatarCloudinaryUrl = await uploadOnCloudinary(avatarFileLocalPath);
     if (!avatarCloudinaryUrl) {
       throw new ApiError(400, 'cloudinary upload failed');
@@ -73,6 +88,14 @@ const userRegsiter = asyncHandler(async (req, res) => {
     );
   }
 
+  // creating the session for user
+  const session = await UserSession.create({ userId: user._id });
+
+  // if session is not created
+  if (!session) {
+    throw new ApiError(400, 'user session is not created');
+  }
+
   // send the response
   return res
     .status(200)
@@ -85,4 +108,80 @@ const userRegsiter = asyncHandler(async (req, res) => {
     );
 });
 
-export { userRegsiter };
+const userLogin = asyncHandler(async (req, res) => {
+  // get the user details
+  const { username, email, password } = req.body;
+
+  // check for username or email
+  if ((!username && !email) || !password) {
+    throw new ApiError(400, 'Username/email and password are required');
+  }
+
+  // fetch userdata from username or email
+  const user = await User.findOne({ $or: [{ username }, { email }] }).select(
+    '+password',
+  );
+
+  // check user exist
+  if (!user) {
+    throw new ApiError(400, "user doesn't exist");
+  }
+
+  // check password is correct
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  // password is not correct
+  if (!isPasswordValid) {
+    throw new ApiError(400, 'please enter a valid password');
+  }
+
+  // generated accessToken and refreshToken
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id,
+  );
+
+  // getting ipaddress and useragent
+  const ipAddress = (
+    req.headers['x-forwarded-for'] || req.socket.remoteAddress
+  )?.toString();
+  const userAgent = req.get('User-Agent');
+
+  // updating the user session
+  const session = await UserSession.updateOne(
+    { userId: user._id },
+    {
+      $set: {
+        userAgent,
+        ipAddress,
+        refreshToken,
+        lastLogin: Date.now(),
+      },
+    },
+    {
+      upsert: true, // upsert -> update + insert, if session is ther update if not then create it
+      new: true, // new:true -> return the updated information
+    },
+  );
+
+  // options for cookies
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+  };
+
+  // sending the response
+  return res
+    .status(200)
+    .cookie('accessToken', accessToken, options)
+    .cookie('refreshToken', refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { user, session, accessToken, refreshToken },
+        'user loggedin successfully !!',
+      ),
+    );
+});
+
+export { userRegsiter, userLogin };

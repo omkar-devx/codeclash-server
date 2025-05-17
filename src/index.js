@@ -9,7 +9,9 @@ dotenv.config({ path: './.env' });
 connectDB()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`✨ server is running on ${PORT} & http://localhost:8000 ✨`);
+      console.log(
+        `✨ server is running on ${PORT} & http://localhost:8000 ✨ \n\n`,
+      );
     });
   })
   .catch(() => {

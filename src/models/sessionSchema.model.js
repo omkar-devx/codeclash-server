@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 
-const sessionSchema = new Schema(
+const userSessionSchema = new Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -10,7 +10,7 @@ const sessionSchema = new Schema(
     userAgent: {
       type: String, // User Defice Info
     },
-    IpAddress: {
+    ipAddress: {
       type: String,
     },
     refreshToken: {
@@ -31,4 +31,4 @@ const sessionSchema = new Schema(
   { timestamps: true },
 );
 
-export const SessionSchema = mongoose.model('SessionSchema', sessionSchema);
+export const UserSession = mongoose.model('UserSession', userSessionSchema);
