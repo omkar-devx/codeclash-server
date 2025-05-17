@@ -1,10 +1,11 @@
 import mongoose, { Schema, Types } from 'mongoose';
 
-const userProfileSchemaSchema = new Schema(
+const userProfileSchema = new Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      required: true,
     },
     bio: {
       type: String,
@@ -30,7 +31,4 @@ const userProfileSchemaSchema = new Schema(
   { timestamps: true },
 );
 
-export const UserProfileSchema = mongoose.model(
-  'UserProfileSchema',
-  userProfileSchemaSchema,
-);
+export const UserProfile = mongoose.model('UserProfile', userProfileSchema);

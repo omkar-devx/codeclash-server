@@ -16,6 +16,10 @@ const sessionSchema = new Schema(
     refreshToken: {
       type: String,
     },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
