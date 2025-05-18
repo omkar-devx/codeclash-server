@@ -22,8 +22,12 @@ app.get('/', (req, res) => {
 
 // router imports
 import userRouter from './routes/user.routes.js';
+import adminRouter from './routes/admin.routes.js';
+import questionRouter from './routes/question.routes.js';
 
 // router declarations
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/questions', questionRouter);
 
 export default app;

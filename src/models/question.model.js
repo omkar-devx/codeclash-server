@@ -2,6 +2,10 @@ import mongoose, { Schema } from 'mongoose';
 
 const questionSchema = new Schema(
   {
+    uid: {
+      type: Number,
+      required: true,
+    },
     title: {
       type: String,
       required: true,

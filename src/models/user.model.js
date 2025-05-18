@@ -8,7 +8,6 @@ const userSchema = new Schema(
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     username: {
       type: String,
@@ -24,6 +23,10 @@ const userSchema = new Schema(
       trim: true,
       lowercase: true,
       unique: true,
+    },
+    avatarUrl: {
+      type: String,
+      default: 'https://i.ibb.co/S4W8SnZr/user.png',
     },
     password: {
       type: String,
@@ -64,6 +67,7 @@ userSchema.methods.generateAccessToken = function () {
       username: this.username,
       email: this.email,
       fullname: this.fullname,
+      role: this.role,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {

@@ -5,6 +5,8 @@ import { User } from '../models/user.model.js';
 import { UserSession } from '../models/sessionSchema.model.js';
 import { UserProfile } from '../models/userProfile.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { UserAchievements } from '../models/userAchievements.model.js';
+import { UserPreferences } from '../models/userPreferences.model.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -56,10 +58,12 @@ const userRegsiter = asyncHandler(async (req, res) => {
       throw new ApiError(400, 'cloudinary upload failed');
     }
   }
+  const finalAvatarUrl = defaultAvatar || avatarCloudinaryUrl.url;
 
   // created a user in user model
   const user = await User.create({
     fullName,
+    avatarUrl: finalAvatarUrl,
     username: username.toLowerCase(),
     email: email.toLowerCase(),
     password,
@@ -71,7 +75,6 @@ const userRegsiter = asyncHandler(async (req, res) => {
   }
 
   // uploading user avatar on userprofile model by using user._id
-  const finalAvatarUrl = defaultAvatar || avatarCloudinaryUrl.url;
   const profileData = {
     userId: user._id,
   };
@@ -86,14 +89,6 @@ const userRegsiter = asyncHandler(async (req, res) => {
       400,
       'User created but avatar is not Uploaded , try later.',
     );
-  }
-
-  // creating the session for user
-  const session = await UserSession.create({ userId: user._id });
-
-  // if session is not created
-  if (!session) {
-    throw new ApiError(400, 'user session is not created');
   }
 
   // send the response
@@ -170,6 +165,18 @@ const userLogin = asyncHandler(async (req, res) => {
     sameSite: 'Strict',
   };
 
+  // // temporary quetsion creating for testing
+  // const question = await Question.create({
+  //   uid: 1,
+  //   title: 'question number one',
+  //   description: 'description of question number one',
+  //   difficulty: 'easy',
+  //   submitted: 5,
+  //   accepted: 3,
+  //   topics: ['array', 'two pointer', 'hash table'],
+  //   hints: ['hint1', 'hint2', 'hint3'],
+  // });
+
   // sending the response
   return res
     .status(200)
@@ -184,4 +191,39 @@ const userLogin = asyncHandler(async (req, res) => {
     );
 });
 
-export { userRegsiter, userLogin };
+const userLogout = asyncHandler(async (req, res) => {
+  console.log(req.user?.role);
+  const session = await UserSession.findOneAndUpdate(
+    {
+      userId: req.user?._id,
+      refreshToken: { $exists: true },
+    },
+    {
+      $unset: {
+        refreshToken: 1,
+      },
+    },
+    {
+      new: true,
+    },
+  );
+  if (!session) {
+    console.warn(`No session found for user ${req.user?._id}`);
+  }
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+  };
+
+  res
+    .status(200)
+    .clearCookie('accessToken', options)
+    .clearCookie('refreshToken', options)
+    .json(
+      new ApiResponse(200, {}, `${req.user?.role} logged out successfully`),
+    );
+});
+
+export { userRegsiter, userLogin, userLogout };
