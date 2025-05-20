@@ -42,6 +42,9 @@ const questionLike = asyncHandler(async (req, res) => {
     if (unlikeResult.deletedCount === 0) {
       throw new ApiError(500, 'something went wrong while unlike');
     }
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, 'unlike is successfully'));
   } else {
     const like = await Like.create({
       userId,
@@ -57,10 +60,10 @@ const questionLike = asyncHandler(async (req, res) => {
     if (!like) {
       throw new ApiError(500, 'something went wrong while like');
     }
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, 'like is successfully'));
   }
-  return res
-    .status(200)
-    .json(new ApiResponse(200, {}, 'like is toggeled successfully'));
 });
 
 const questionComment = asyncHandler(async (req, res) => {

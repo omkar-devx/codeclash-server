@@ -7,6 +7,7 @@ import { UserProfile } from '../models/userProfile.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { UserAchievements } from '../models/userAchievements.model.js';
 import { UserPreferences } from '../models/userPreferences.model.js';
+import jwt from 'jsonwebtoken';
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -20,6 +21,21 @@ const generateAccessAndRefreshToken = async (userId) => {
     throw new ApiError(
       500,
       'something went wrong while create accesstoken and refreshtoken',
+    );
+  }
+};
+
+const generateAccessToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+
+    const accessToken = await user.generateAccessToken();
+
+    return accessToken;
+  } catch (error) {
+    throw new ApiError(
+      400,
+      'something went wrong while generating access token',
     );
   }
 };
@@ -226,4 +242,103 @@ const userLogout = asyncHandler(async (req, res) => {
     );
 });
 
-export { userRegsiter, userLogin, userLogout };
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  try {
+    // getting refreshToken from cookies or body
+    const incomingRefreshToken =
+      req.cookies.refreshToken || req.body.refreshToken;
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, 'Unauthorized Access');
+    }
+
+    // decoding the refreshToken
+    let decodedToken;
+    try {
+      decodedToken = jwt.verify(
+        incomingRefreshToken,
+        process.env.REFRESH_TOKEN_SECRET,
+      );
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session expired. Please log in again.',
+      });
+    }
+
+    // finding the session of the current user
+    const session = await UserSession.findOne({ userId: decodedToken?._id });
+
+    if (!session || !session.refreshToken) {
+      throw new ApiError(401, 'Refresh Token not found in session');
+    }
+
+    // calculating timeLeft to expire refreshToken
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeLeft = decodedToken.exp - currentTime;
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+    };
+
+    if (
+      // if refreshToken will expires soon or different accessToken
+      timeLeft < 2 * 24 * 60 * 60 ||
+      incomingRefreshToken !== session.refreshToken
+    ) {
+      const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+        decodedToken._id,
+      );
+
+      const updateRefreshToken = await UserSession.updateOne(
+        { userId: decodedToken._id },
+        {
+          $set: {
+            refreshToken,
+          },
+        },
+      );
+
+      if (!updateRefreshToken) {
+        throw new ApiError(
+          400,
+          'Something went wrong while refreshing refreshToken',
+        );
+      }
+
+      return res
+        .status(200)
+        .cookie('accessToken', accessToken, options)
+        .cookie('refreshToken', refreshToken, options)
+        .json(
+          new ApiResponse(
+            200,
+            { accessToken, refreshToken },
+            'accessToken and refreshToken is refreshed successfully',
+          ),
+        );
+    } else {
+      // if correct refreshToken is present
+      const accessToken = await generateAccessToken(decodedToken._id);
+      return res
+        .status(200)
+        .cookie('accessToken', accessToken, options)
+        .json(
+          new ApiResponse(
+            200,
+            { accessToken },
+            'accessToken refresh successfully',
+          ),
+        );
+    }
+  } catch (error) {
+    throw new ApiError(
+      400,
+      error?.message ||
+        'Something went wrong while refreshing the access token',
+    );
+  }
+});
+
+export { userRegsiter, userLogin, userLogout, refreshAccessToken };

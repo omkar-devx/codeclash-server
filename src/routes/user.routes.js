@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  refreshAccessToken,
   userLogin,
   userLogout,
   userRegsiter,
@@ -12,5 +13,6 @@ const router = Router();
 router.route('/register').post(upload.single('avatar'), userRegsiter);
 router.route('/login').post(userLogin);
 router.route('/logout').post(verifyJWT, userLogout);
+router.route('/refresh-token').post(refreshAccessToken);
 
 export default router;
