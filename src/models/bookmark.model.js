@@ -7,12 +7,10 @@ const bookmarkSchema = new Schema(
       ref: 'User',
       required: true,
     },
-    bookmarkQuestions: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Question',
-      },
-    ],
+    questionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Question',
+    },
     createdAt: {
       type: Date,
       default: Date.now,

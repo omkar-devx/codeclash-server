@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { Comment } from '../models/comment.model.js';
+import { Bookmark } from '../models/bookmark.model.js';
 
 const questionLike = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
@@ -101,4 +102,63 @@ const questionComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { comment }, 'comment is added successfully'));
 });
 
-export { questionLike, questionComment };
+const questionBookmark = asyncHandler(async (req, res) => {
+  // get the user id from req
+  const userId = req.user?._id;
+  if (!userId) {
+    throw new ApiError(401, 'Unauthorized Access');
+  }
+
+  // get questionUid from params
+  const { questionUid } = req.params;
+  console.log(questionUid);
+  if (!questionUid) {
+    throw new ApiError(400, 'Question UID is required ');
+  }
+
+  // get questionId from the Question model
+  const question = await Question.findOne({ uid: questionUid });
+  if (!question) {
+    throw new ApiError(404, 'question is not found');
+  }
+  const questionId = question._id;
+
+  // find bookmark is present or not
+  const bookmark = await Bookmark.findOne({ userId, questionId });
+
+  if (!bookmark) {
+    // is not present
+    const createBookmark = await Bookmark.create({
+      userId,
+      questionId,
+    });
+
+    const userAchievements = await UserAchievements.updateOne(
+      {
+        userId,
+      },
+      { $addToSet: { questionBookmarked: questionId } },
+      { upsert: true },
+    );
+    if (!createBookmark) {
+      throw new ApiError(500, 'something went wrong while adding bookmakr');
+    }
+  } else {
+    // if present
+    const removeBookmark = await Bookmark.deleteOne({ userId, questionId });
+    const userAchievements = await UserAchievements.updateOne(
+      { userId },
+      { $pull: { questionBookmarked: questionId } },
+      { new: true },
+    );
+    if (!removeBookmark) {
+      throw new ApiError(500, 'something went wrong while removing bookmark');
+    }
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, {}, 'bookmark toggeled successfully!!'));
+});
+
+export { questionLike, questionComment, questionBookmark };
