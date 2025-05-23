@@ -6,6 +6,7 @@ const userSessionSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
     },
     userAgent: {
       type: String, // User Defice Info

@@ -5,6 +5,9 @@ const testcaseSchema = new Schema(
     questionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Question',
+      index: true,
+      unique: true,
+      required: true,
     },
     input: [
       {

@@ -5,6 +5,8 @@ const questionSchema = new Schema(
     uid: {
       type: Number,
       required: true,
+      index: true,
+      unique: true,
     },
     title: {
       type: String,

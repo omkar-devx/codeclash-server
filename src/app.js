@@ -24,10 +24,14 @@ app.get('/', (req, res) => {
 import userRouter from './routes/user.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import questionRouter from './routes/question.routes.js';
+import coderunnerRouter from './routes/coderunner.route.js';
+
+const prefix = '/api/v1';
 
 // router declarations
-app.use('/api/v1/users', userRouter);
-app.use('/api/v1/admin', adminRouter);
-app.use('/api/v1/questions', questionRouter);
+app.use(`${prefix}/users`, userRouter);
+app.use(`${prefix}/admin`, adminRouter);
+app.use(`${prefix}/questions`, questionRouter);
+app.use(`${prefix}/coderunner`, coderunnerRouter);
 
 export default app;
