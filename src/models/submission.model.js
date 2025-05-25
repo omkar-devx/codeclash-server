@@ -8,18 +8,33 @@ const submissionSchema = new Schema(
       required: true,
       index: true,
     },
-    questionId: {
-      types: mongoose.Schema.Types.ObjectId,
-      ref: 'Question',
+    questionUId: {
+      type: Number,
       required: true,
     },
-    code: {
+    source_code: {
       type: String,
       required: true,
+    },
+    testcase_count: {
+      type: Number,
+    },
+    time: {
+      type: Number,
+    },
+    memory: {
+      type: Number,
+    },
+    failedTestCase: {
+      type: String,
+      default: null,
     },
     status: {
       type: String,
       enum: ['passed', 'failed'],
+    },
+    message: {
+      type: String,
     },
     createdAt: {
       type: Date,

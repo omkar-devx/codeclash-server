@@ -8,6 +8,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { UserAchievements } from '../models/userAchievements.model.js';
 import { UserPreferences } from '../models/userPreferences.model.js';
 import jwt from 'jsonwebtoken';
+import { Testcase } from '../models/testcase.model.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -192,7 +193,36 @@ const userLogin = asyncHandler(async (req, res) => {
   //   topics: ['array', 'two pointer', 'hash table'],
   //   hints: ['hint1', 'hint2', 'hint3'],
   // });
+  // const temp = [
+  //   {
+  //     questionUId: 1,
+  //     input: '6\n-5 2 3 0 7 4\n7',
+  //     output: '3 4',
+  //   },
+  //   {
+  //     questionUId: 1,
+  //     input: '7\n1 5 3 5 1 2 4\n7',
+  //     output: '3 5',
+  //   },
+  //   {
+  //     questionUId: 1,
+  //     input: '4\n2 2 2 2\n4',
+  //     output: '0 1',
+  //   },
+  //   {
+  //     questionUId: 1,
+  //     input: '10\n10 -3 7 1 4 9 -2 8 0 5\n6',
+  //     output: '1 5',
+  //   },
+  //   {
+  //     questionUId: 1,
+  //     input: '8\n1000000 3 500000 -500000 0 7 -3 2\n100002',
+  //     output: '-1',
+  //   },
+  // ];
 
+  // const testcase = await Testcase.insertMany(temp);
+  // console.log(testcase);
   // sending the response
   return res
     .status(200)

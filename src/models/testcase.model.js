@@ -2,23 +2,19 @@ import mongoose, { Schema } from 'mongoose';
 
 const testcaseSchema = new Schema(
   {
-    questionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Question',
+    questionUId: {
+      type: Number,
       index: true,
-      unique: true,
       required: true,
     },
-    input: [
-      {
-        type: String,
-      },
-    ],
-    output: [
-      {
-        type: String,
-      },
-    ],
+    input: {
+      type: String,
+      required: true,
+    },
+    output: {
+      type: String,
+      required: true,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
