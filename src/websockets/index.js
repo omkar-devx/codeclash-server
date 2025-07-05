@@ -9,6 +9,9 @@ class WebSocketService {
     this.pub = new Redis();
     this.sub = new Redis();
 
+    this.redisEventsCheck(this.pub, 'publisher');
+    this.redisEventsCheck(this.sub, 'subscriber');
+
     this.wss = new WebSocketServer({ server });
 
     this.roomManager = new roomManager();
@@ -16,28 +19,26 @@ class WebSocketService {
 
     this.init();
 
-    this.sub.on('message', (channel, raw) => {
-      let room;
-      try {
-        room = this.roomManager.getRoomFromRoomId(channel);
-      } catch (e) {
-        console.warn(`Room ${channel} not found. Dropping message.`);
-        return;
-      }
-      const message = JSON.parse(raw);
-      for (const client of room.clients) {
-        if (client.readyState === client.OPEN) {
-          client.send(
-            JSON.stringify({
-              type: 'chat-message',
-              payload: message,
-            }),
-          );
-        }
-      }
-    });
+    this.subscribeToMessage();
 
     this.heartbeat();
+  }
+  redisEventsCheck(redisClient, clientName = 'redis') {
+    redisClient.on('connect', () => {
+      console.log(`${clientName} is connected 🔗`);
+    });
+
+    // redisClient.on('ready', () => {
+    //   console.log(`Redis is ready`);
+    // });
+
+    redisClient.on('error', (err) => {
+      console.log(`${clientName} have error`, err.message);
+    });
+
+    redisClient.on('end', () => {
+      console.log(`${redisClient} connection ended `);
+    });
   }
   init() {
     this.wss.on('connection', (ws) => {
@@ -103,7 +104,28 @@ class WebSocketService {
       });
     });
   }
-
+  subscribeToMessage() {
+    this.sub.on('message', (channel, raw) => {
+      let room;
+      try {
+        room = this.roomManager.getRoomFromRoomId(channel);
+      } catch (e) {
+        console.warn(`Room ${channel} not found. Dropping message.`);
+        return;
+      }
+      const message = JSON.parse(raw);
+      for (const client of room.clients) {
+        if (client.readyState === client.OPEN) {
+          client.send(
+            JSON.stringify({
+              type: 'chat-message',
+              payload: message,
+            }),
+          );
+        }
+      }
+    });
+  }
   heartbeat() {
     setInterval(() => {
       this.wss.clients.forEach((ws) => {
