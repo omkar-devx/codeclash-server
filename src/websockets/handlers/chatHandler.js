@@ -5,7 +5,7 @@ class chatHandler {
     this.roomManager = roomManager;
   }
 
-  sendMessage(ws, payload) {
+  sendMessage(ws, payload, pub) {
     if (!payload) {
       throw new ApiError(400, 'Missing Payload in Chat!!!');
     }
@@ -21,8 +21,6 @@ class chatHandler {
 
     //get room data : clients,chatHistory,users
     const room = this.roomManager.getRoomFromRoomId(roomId);
-    //get all clients
-    const clients = this.roomManager.getClientsInRoom(roomId);
 
     const data = {
       roomId,
@@ -30,17 +28,6 @@ class chatHandler {
       message,
       timestamp: Date.now(),
     };
-
-    for (const client of clients) {
-      if (client.readyState === client.OPEN) {
-        client.send(
-          JSON.stringify({
-            type: 'chat-message',
-            payload: data,
-          }),
-        );
-      }
-    }
 
     console.log(`message: ${message} sent in ${roomId}`);
 
@@ -53,6 +40,8 @@ class chatHandler {
 
     //push message in users key
     room.users.get(userId).push({ message, timestamp: data.timestamp });
+
+    pub.publish(roomId, JSON.stringify(data));
   }
 }
 
