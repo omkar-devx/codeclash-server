@@ -1,5 +1,4 @@
-import { ApiError } from '../../utils/ApiError';
-import BroadcastToRoom from '../utils/broadcast';
+import { ApiError } from '../../utils/ApiError.js';
 
 class chatHandler {
   constructor(roomManager) {
@@ -7,18 +6,30 @@ class chatHandler {
   }
 
   sendMessage(ws, payload) {
+    if (!payload) {
+      throw new ApiError(400, 'Missing Payload in Chat!!!');
+    }
+
     const { roomId, userId, message } = payload;
 
     if (!roomId || !userId || !message) {
-      throw new ApiError(404, 'payload data is not in correct structure');
+      throw new ApiError(
+        404,
+        'RoomId or UserId or Message may be not present in Chat Payload',
+      );
     }
 
+    //get room data : clients,chatHistory,users
+    const room = this.roomManager.getRoomFromRoomId(roomId);
+    //get all clients
+    const clients = this.roomManager.getClientsInRoom(roomId);
+
     const data = {
-      ...payload,
+      roomId,
+      userId,
+      message,
       timestamp: Date.now(),
     };
-
-    const clients = this.roomManager.getClientsInRoom(roomId);
 
     for (const client of clients) {
       if (client.readyState === client.OPEN) {
@@ -31,11 +42,17 @@ class chatHandler {
       }
     }
 
-    const room = this.roomManager.getClientsInRoom(roomId);
-    if (!room) {
-      throw new ApiError(400, 'Room does not exist');
-    }
+    console.log(`message: ${message} sent in ${roomId}`);
+
+    //push data in chatHistory
     room.chatHistory.push(data);
+
+    if (!room.users.has(userId)) {
+      room.users.set(userId, []);
+    }
+
+    //push message in users key
+    room.users.get(userId).push({ message, timestamp: data.timestamp });
   }
 }
 

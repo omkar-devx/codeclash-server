@@ -1,4 +1,4 @@
-import { ApiError } from '../utils/ApiError';
+import { ApiError } from '../utils/ApiError.js';
 
 class roomManager {
   /*
@@ -29,6 +29,13 @@ map([
   // add users to the rooms
   addClientToRoom(ws, roomId, userId) {
     // room is not created
+    if (!roomId || !userId) {
+      throw new ApiError(
+        400,
+        'Missing RoomId & UserId in Payload of Join-Room!!!',
+      );
+    }
+
     if (!this.rooms.has(roomId)) {
       this.rooms.set(roomId, {
         clients: new Set(),
@@ -38,10 +45,12 @@ map([
     }
 
     // when room is created
-    const { clients } = this.rooms.get(roomId);
-    clients.add(ws);
+    const room = this.rooms.get(roomId);
+    room.clients.add(ws);
+    room.users.set(userId, []);
     ws.meta.roomId = roomId;
     ws.meta.userId = userId;
+    console.log(`${userId} is joined in ${roomId}`);
   }
 
   removeClient(ws) {
@@ -53,14 +62,30 @@ map([
 
     const room = this.rooms.get(roomId);
     room.clients.delete(ws);
+    console.log(`${ws.meta.userId} disconnected from ${ws.meta.roomId}`);
     if (room.clients.size === 0) {
       this.rooms.delete(roomId);
+      console.log(`${roomId} deleted..`);
     }
+  }
+
+  getRoomFromRoomId(roomId) {
+    if (!roomId) {
+      throw new ApiError(400, 'Not a valid RoomId to get Room Data');
+    }
+
+    const room = this.rooms.get(roomId);
+
+    if (!room) {
+      throw new ApiError(400, 'Room is not present on current RoomId');
+    }
+
+    return room;
   }
 
   getClientsInRoom(roomId) {
     const room = this.rooms.get(roomId);
-    return room ? room.clients : new Set();
+    return room?.clients ?? new Set();
   }
 }
 

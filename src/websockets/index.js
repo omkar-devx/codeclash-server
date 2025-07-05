@@ -6,6 +6,7 @@ import { ApiError } from '../utils/ApiError.js';
 class WebSocketService {
   constructor(server) {
     this.wss = new WebSocketServer({ server });
+
     this.roomManager = new roomManager();
     this.chatHandler = new chatHandler(this.roomManager);
 
@@ -19,6 +20,7 @@ class WebSocketService {
       ws.isAlive = true;
       ws.on('pong', () => (ws.isAlive = true));
 
+      // storing metadata in the socket
       ws.meta = {
         roomId: null,
         userId: null,
@@ -31,34 +33,27 @@ class WebSocketService {
 
           switch (type) {
             case 'join-room':
-              if (!payload?.roomId || !payload?.userId) {
-                throw new ApiError(
-                  400,
-                  'missing roomId or userId in join-room',
-                );
-              }
               this.roomManager.addClientToRoom(
                 ws,
                 payload.roomId,
                 payload.userId,
               );
               break;
+
             case 'chat':
-              if (!payload) {
-                throw new ApiError(400, 'missing payload for chat');
-              }
               this.chatHandler.sendMessage(ws, payload);
               break;
+
             default:
               throw new ApiError(400, 'Unknown message type');
           }
         } catch (error) {
-          console.error('❌ Invalid message format:', error.message);
+          console.error('Error : ', error.message);
           if (ws.readyState === ws.OPEN) {
             ws.send(
               JSON.stringify({
                 type: 'error',
-                message: 'Invalid message format',
+                message: error.message,
               }),
             );
           }
@@ -66,7 +61,6 @@ class WebSocketService {
       });
 
       ws.on('close', () => {
-        console.log('client disconnected');
         this.roomManager.removeClient(ws);
       });
 
@@ -84,9 +78,9 @@ class WebSocketService {
           return ws.terminate();
         }
         ws.isAlive = false;
-        ws.ping(); // 🔁 Lub-dub
+        ws.ping();
       });
-    }, 10000);
+    }, 30000);
   }
 }
 
