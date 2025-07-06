@@ -5,44 +5,40 @@ import Redis from 'ioredis';
 import { ApiError } from '../utils/ApiError.js';
 
 class WebSocketService {
-  constructor(server) {
+  constructor() {
     this.pub = new Redis();
     this.sub = new Redis();
 
     this.redisEventsCheck(this.pub, 'publisher');
     this.redisEventsCheck(this.sub, 'subscriber');
 
-    this.wss = new WebSocketServer({ server });
+    this.wss = new WebSocketServer({ noServer: true });
 
     this.roomManager = new roomManager();
     this.chatHandler = new chatHandler(this.roomManager);
 
     this.init();
-
     this.subscribeToMessage();
-
     this.heartbeat();
   }
+
   redisEventsCheck(redisClient, clientName = 'redis') {
     redisClient.on('connect', () => {
       console.log(`${clientName} is connected 🔗`);
     });
-
-    // redisClient.on('ready', () => {
-    //   console.log(`Redis is ready`);
-    // });
 
     redisClient.on('error', (err) => {
       console.log(`${clientName} have error`, err.message);
     });
 
     redisClient.on('end', () => {
-      console.log(`${redisClient} connection ended `);
+      console.log(`${clientName} connection ended `);
     });
   }
+
   init() {
     this.wss.on('connection', (ws) => {
-      console.log('client connected....');
+      console.log('Regular WebSocket client connected....');
 
       ws.isAlive = true;
       ws.on('pong', () => {
@@ -104,6 +100,7 @@ class WebSocketService {
       });
     });
   }
+
   subscribeToMessage() {
     this.sub.on('message', (channel, raw) => {
       let room;
@@ -126,6 +123,7 @@ class WebSocketService {
       }
     });
   }
+
   heartbeat() {
     setInterval(() => {
       this.wss.clients.forEach((ws) => {
@@ -137,6 +135,12 @@ class WebSocketService {
         ws.ping();
       });
     }, 30000);
+  }
+
+  handleUpgrade(request, socket, head) {
+    this.wss.handleUpgrade(request, socket, head, (ws) => {
+      this.wss.emit('connection', ws, request);
+    });
   }
 }
 

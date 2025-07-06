@@ -1,9 +1,10 @@
-// require("dotenv").config({ path: "./env" });
 import dotenv from 'dotenv';
-import http, { IncomingMessage } from 'http';
+import http from 'http';
 import connectDB from './db/index.js';
 import app from './app.js';
 import WebSocketService from './websockets/index.js';
+import YjsWebSocketServer from './websockets/yjsServer.js';
+import { parse } from 'url';
 
 const PORT = process.env.PORT || 8000;
 
@@ -15,11 +16,27 @@ connectDB()
   .then(() => {
     server.listen(PORT, () => {
       console.log(
-        `✨ server is running on ${PORT} & http://localhost:8000 ✨ \n`,
+        `✨ server is running on ${PORT} & http://localhost:${PORT} ✨ \n`,
       );
     });
-    new WebSocketService(server);
+
+    const webSocketService = new WebSocketService();
+    const yjsWebSocketServer = new YjsWebSocketServer();
+
+    server.on('upgrade', (request, socket, head) => {
+      const { pathname } = parse(request.url);
+
+      console.log('Upgrade request for:', pathname);
+
+      if (pathname && pathname.startsWith('/yjs')) {
+        yjsWebSocketServer.handleUpgrade(request, socket, head);
+      } else {
+        webSocketService.handleUpgrade(request, socket, head);
+      }
+    });
+
+    console.log('🚀 All WebSocket services initialized');
   })
-  .catch(() => {
-    console.log('MongoDb Connection FAILDED !!!!');
+  .catch((error) => {
+    console.log('MongoDb Connection FAILED !!!!', error);
   });

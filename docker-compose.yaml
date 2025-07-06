@@ -7,6 +7,13 @@ services:
     command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - redis-data:/data
+  yjs:
+    image: alokinplc/y-websocket
+    container_name: yjs-server
+    ports:
+      - '6000:6000'
+    environment:
+      - PORT=6000
 
 volumes:
   redis-data:
