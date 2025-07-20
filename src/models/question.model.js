@@ -19,21 +19,26 @@ const questionSchema = new Schema(
     difficulty: {
       type: String,
       enum: ['easy', 'medium', 'hard'],
+      required: true,
     },
     submitted: {
       type: Number,
+      default: 0,
     },
     accepted: {
       type: Number,
+      default: 0,
     },
     topics: [
       {
         type: String,
+        required: true,
       },
     ],
     hints: [
       {
         type: String,
+        required: true,
       },
     ],
     isActive: {

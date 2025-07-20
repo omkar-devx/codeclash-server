@@ -62,7 +62,7 @@ const userRegsiter = asyncHandler(async (req, res) => {
 
   // check for avatar image from file
   const avatarFileLocalPath = await req.file?.path;
-
+  console.log(avatarFileLocalPath);
   // if image in multer file upload it on cloudinary
   let avatarCloudinaryUrl;
   if (avatarFileLocalPath) {
@@ -175,13 +175,6 @@ const userLogin = asyncHandler(async (req, res) => {
     },
   );
 
-  // options for cookies
-  const options = {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Strict',
-  };
-
   // // temporary quetsion creating for testing
   // const question = await Question.create({
   //   uid: 1,
@@ -224,6 +217,12 @@ const userLogin = asyncHandler(async (req, res) => {
   // const testcase = await Testcase.insertMany(temp);
   // console.log(testcase);
   // sending the response
+  // options for cookies
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+  };
   return res
     .status(200)
     .cookie('accessToken', accessToken, options)
@@ -235,6 +234,13 @@ const userLogin = asyncHandler(async (req, res) => {
         'user loggedin successfully !!',
       ),
     );
+});
+
+const currentUser = asyncHandler(async (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: req.user,
+  });
 });
 
 const userLogout = asyncHandler(async (req, res) => {
@@ -349,7 +355,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
           ),
         );
     } else {
-      // if correct refreshToken is present
+      // refreshtoken expiry time is large
       const accessToken = await generateAccessToken(decodedToken._id);
       return res
         .status(200)
@@ -371,4 +377,4 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { userRegsiter, userLogin, userLogout, refreshAccessToken };
+export { userRegsiter, userLogin, currentUser, userLogout, refreshAccessToken };

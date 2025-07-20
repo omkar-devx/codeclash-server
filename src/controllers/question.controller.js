@@ -7,6 +7,79 @@ import { ApiError } from '../utils/ApiError.js';
 import { Comment } from '../models/comment.model.js';
 import { Bookmark } from '../models/bookmark.model.js';
 
+const createQuestion = asyncHandler(async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    throw new ApiError(401, 'Unauthorized Acess Please Login');
+  }
+
+  const { questionUid, title, description, difficulty, topics, hints } =
+    req.body;
+  if (
+    !questionUid ||
+    !title ||
+    !description ||
+    !difficulty ||
+    !topics ||
+    !hints
+  ) {
+    throw new ApiError(400, 'all fields are required');
+  }
+
+  const questionExists = await Question.findOne({ uid: questionUid });
+  if (questionExists) {
+    throw new ApiError(400, 'Question with this UID already exists');
+  }
+
+  const question = await Question.insertOne({
+    uid: questionUid,
+    title,
+    description,
+    difficulty,
+    topics,
+    hints,
+  });
+
+  if (!question) {
+    throw new ApiError(
+      402,
+      'Unable to create the question due to a server error',
+    );
+  }
+
+  res
+    .status(201)
+    .json(new ApiResponse(201, question, 'Question is Successfully Created'));
+});
+
+const questionById = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    throw new ApiError(400, 'Invalid ID format');
+  }
+
+  const question = await Question.findOne({ uid: id });
+  if (!question) {
+    throw new ApiError(400, 'Question is not found of this id');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, question, 'Question Found Successfully'));
+});
+
+const problemset = asyncHandler(async (req, res) => {
+  const questions = await Question.find(
+    {},
+    { uid: 1, title: 1, difficulty: 1, topics: 1 },
+  );
+
+  if (questions.length === 0) {
+    throw new ApiError(404, 'No questions found in the problem set');
+  }
+
+  res.status(200).json(new ApiResponse(200, questions, 'problemset questions'));
+});
+
 const questionLike = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   const { questionUid } = req.params;
@@ -164,4 +237,11 @@ const questionBookmark = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, 'bookmark toggeled successfully!!'));
 });
 
-export { questionLike, questionComment, questionBookmark };
+export {
+  questionLike,
+  questionComment,
+  questionBookmark,
+  createQuestion,
+  problemset,
+  questionById,
+};

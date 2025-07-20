@@ -21,17 +21,40 @@ app.get('/', (req, res) => {
 });
 
 // router imports
-import userRouter from './routes/user.routes.js';
+import userRouter from './routes/auth.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import questionRouter from './routes/question.routes.js';
 import coderunnerRouter from './routes/coderunner.route.js';
+import { ApiError } from './utils/ApiError.js';
 
 const prefix = '/api/v1';
 
 // router declarations
-app.use(`${prefix}/users`, userRouter);
+app.use(`${prefix}/auth`, userRouter);
+// app.use(`${prefix}/users`, userRouter);
 app.use(`${prefix}/admin`, adminRouter);
 app.use(`${prefix}/questions`, questionRouter);
 app.use(`${prefix}/coderunner`, coderunnerRouter);
+
+// custom error response
+app.use((err, req, res, next) => {
+  console.log(err);
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.messages,
+      error: err.error,
+      data: err.data,
+      stack: undefined,
+    });
+  }
+  return res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: [],
+    data: null,
+    stack: undefined,
+  });
+});
 
 export default app;

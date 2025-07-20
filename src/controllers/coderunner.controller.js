@@ -68,6 +68,8 @@ const codeRun = asyncHandler(async (req, res) => {
       stdin,
       expected_output,
       stdout,
+      stderr,
+      compile_output,
       created_at,
       finished_at,
       time,
@@ -82,6 +84,8 @@ const codeRun = asyncHandler(async (req, res) => {
       stdin: safeDecode(stdin),
       expected_output: safeDecode(expected_output),
       stdout: safeDecode(stdout),
+      stderr,
+      compile_output,
       created_at,
       finished_at,
       time,
@@ -97,7 +101,9 @@ const codeRun = asyncHandler(async (req, res) => {
 
   res
     .status(200)
-    .json(new ApiResponse(200, { source_code, output }, 'testcase'));
+    .json(
+      new ApiResponse(200, { source_code, output }, 'Code Runned Successfully'),
+    );
 });
 
 const codeSubmit = asyncHandler(async (req, res) => {
