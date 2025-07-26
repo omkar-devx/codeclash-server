@@ -99,7 +99,7 @@ const codeRun = asyncHandler(async (req, res) => {
     }),
   );
 
-  res
+  return res
     .status(200)
     .json(
       new ApiResponse(200, { source_code, output }, 'Code Runned Successfully'),
@@ -205,7 +205,9 @@ const codeSubmit = asyncHandler(async (req, res) => {
     );
   }
 
-  res.status(200).json(new ApiResponse(200, { submit }, 'code is submitted'));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { submit }, 'code is submitted'));
 });
 
 export { codeRun, codeSubmit };

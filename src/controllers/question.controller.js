@@ -6,6 +6,7 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { Comment } from '../models/comment.model.js';
 import { Bookmark } from '../models/bookmark.model.js';
+import { Testcase } from '../models/testcase.model.js';
 
 const createQuestion = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -47,7 +48,7 @@ const createQuestion = asyncHandler(async (req, res) => {
     );
   }
 
-  res
+  return res
     .status(201)
     .json(new ApiResponse(201, question, 'Question is Successfully Created'));
 });
@@ -77,7 +78,9 @@ const problemset = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'No questions found in the problem set');
   }
 
-  res.status(200).json(new ApiResponse(200, questions, 'problemset questions'));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, questions, 'problemset questions'));
 });
 
 const questionLike = asyncHandler(async (req, res) => {
@@ -173,7 +176,7 @@ const questionComment = asyncHandler(async (req, res) => {
   }
 
   // send response
-  res
+  return res
     .status(201)
     .json(new ApiResponse(200, { comment }, 'comment is added successfully'));
 });
@@ -232,9 +235,54 @@ const questionBookmark = asyncHandler(async (req, res) => {
     }
   }
 
-  res
+  return res
     .status(200)
     .json(new ApiResponse(200, {}, 'bookmark toggeled successfully!!'));
+});
+
+const multipleQuestions = asyncHandler(async (req, res) => {
+  const { questionArray } = req.body;
+  if (!questionArray) {
+    throw new ApiError(400, "didn't get the question id");
+  }
+
+  const questions = await Question.find({ uid: { $in: questionArray } });
+  if (!questions) {
+    throw new ApiError(400, 'no questions found');
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, questions, 'Multiple Questions'));
+});
+
+const questionTestcase = asyncHandler(async (req, res) => {
+  const { questionUId, input, output } = req.body;
+  if (!questionUId || !input || !output) {
+    throw new ApiError(400, 'All fields are required');
+  }
+
+  const question = await Question.findOne({ uid: questionUId });
+  if (!question) {
+    throw new ApiError(400, 'Question is not found of the given question id');
+  }
+
+  const testcase = Testcase.insertOne({
+    questionUId,
+    input,
+    output,
+  });
+
+  if (!testcase) {
+    throw new ApiError(
+      401,
+      'something went wrong while inserting the testcase',
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, testcase, 'Testcase is added Successfully'));
 });
 
 export {
@@ -244,4 +292,6 @@ export {
   createQuestion,
   problemset,
   questionById,
+  multipleQuestions,
+  questionTestcase,
 };

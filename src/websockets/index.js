@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import roomManager from './roomManager.js';
+import roomManager from './handlers/roomManager.js';
 import chatHandler from './handlers/chatHandler.js';
 import Redis from 'ioredis';
 import { ApiError } from '../utils/ApiError.js';
@@ -56,6 +56,7 @@ class WebSocketService {
         try {
           const msg = JSON.parse(raw);
           const { type, payload } = msg;
+          console.log(type);
 
           if (!type || typeof payload !== 'object') {
             throw new ApiError(400, 'Invalid message structure');

@@ -1,4 +1,11 @@
-import { ApiError } from '../utils/ApiError.js';
+import { ApiError } from '../../utils/ApiError.js';
+import {
+  addUserOnline,
+  addUserToRoom,
+  isUserPresentInRoom,
+  removeUserOnline,
+} from '../../utils/redis.js';
+import { Room } from '../../models/room.model.js';
 
 class roomManager {
   /*
@@ -28,7 +35,7 @@ map([
   }
 
   // add users to the rooms
-  addClientToRoom(ws, roomId, userId, sub) {
+  async addClientToRoom(ws, roomId, userId, sub) {
     // room is not created
     if (!roomId || !userId) {
       throw new ApiError(
@@ -57,13 +64,26 @@ map([
     if (!room.users.has(userId)) {
       room.users.set(userId, []);
     }
+
+    // if user is not present in the current room
+    try {
+      if (!(await isUserPresentInRoom(roomId, userId))) {
+        await addUserToRoom(roomId, userId);
+        await addUserOnline(roomId, userId);
+      } else {
+        await addUserOnline(roomId, userId);
+      }
+    } catch (error) {
+      throw new ApiError(400, error.message);
+    }
     ws.meta.roomId = roomId;
     ws.meta.userId = userId;
     console.log(`${userId} is joined in ${roomId}`);
   }
 
-  removeClient(ws, sub) {
+  async removeClient(ws, sub) {
     const roomId = ws.meta.roomId;
+    const userId = ws.meta.userId;
 
     if (!roomId || !this.rooms.has(roomId)) {
       return;
@@ -71,7 +91,11 @@ map([
 
     const room = this.rooms.get(roomId);
     room.clients.delete(ws);
-
+    try {
+      await removeUserOnline(roomId, userId);
+    } catch (error) {
+      throw new ApiError(400, error.message);
+    }
     console.log(`${ws.meta.userId} disconnected from ${ws.meta.roomId}`);
 
     if (room.clients.size === 0) {

@@ -1,11 +1,12 @@
 import { ApiError } from '../../utils/ApiError.js';
+import { addChatMessage } from '../../utils/redis.js';
 
 class chatHandler {
   constructor(roomManager) {
     this.roomManager = roomManager;
   }
 
-  sendMessage(ws, payload, pub) {
+  async sendMessage(ws, payload, pub) {
     if (!payload) {
       throw new ApiError(400, 'Missing Payload in Chat!!!');
     }
@@ -40,7 +41,7 @@ class chatHandler {
 
     //push message in users key
     room.users.get(userId).push({ message, timestamp: data.timestamp });
-
+    await addChatMessage(roomId, data);
     pub.publish(roomId, JSON.stringify(data));
   }
 }

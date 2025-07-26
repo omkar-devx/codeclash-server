@@ -25,6 +25,7 @@ import userRouter from './routes/auth.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import questionRouter from './routes/question.routes.js';
 import coderunnerRouter from './routes/coderunner.route.js';
+import collaborateRouter from './routes/collaborate.routes.js';
 import { ApiError } from './utils/ApiError.js';
 
 const prefix = '/api/v1';
@@ -35,6 +36,7 @@ app.use(`${prefix}/auth`, userRouter);
 app.use(`${prefix}/admin`, adminRouter);
 app.use(`${prefix}/questions`, questionRouter);
 app.use(`${prefix}/coderunner`, coderunnerRouter);
+app.use(`${prefix}/collaborate`, collaborateRouter);
 
 // custom error response
 app.use((err, req, res, next) => {
@@ -42,8 +44,8 @@ app.use((err, req, res, next) => {
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
       success: false,
-      message: err.messages,
-      error: err.error,
+      message: err.message,
+      error: err.message,
       data: err.data,
       stack: undefined,
     });
@@ -51,7 +53,7 @@ app.use((err, req, res, next) => {
   return res.status(500).json({
     success: false,
     message: 'Internal Server Error',
-    error: [],
+    error: err.message,
     data: null,
     stack: undefined,
   });

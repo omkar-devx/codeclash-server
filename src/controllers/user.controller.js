@@ -237,7 +237,7 @@ const userLogin = asyncHandler(async (req, res) => {
 });
 
 const currentUser = asyncHandler(async (req, res) => {
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     user: req.user,
   });
@@ -269,7 +269,7 @@ const userLogout = asyncHandler(async (req, res) => {
     sameSite: 'Strict',
   };
 
-  res
+  return res
     .status(200)
     .clearCookie('accessToken', options)
     .clearCookie('refreshToken', options)
