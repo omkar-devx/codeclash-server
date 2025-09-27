@@ -8,6 +8,10 @@ import { parse } from 'url';
 
 const PORT = process.env.PORT || 8000;
 
+// console.log = function (...args) {
+//   console.trace(...args);
+// };
+
 dotenv.config({ path: './.env' });
 
 const server = http.createServer(app);

@@ -285,6 +285,40 @@ const questionTestcase = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, testcase, 'Testcase is added Successfully'));
 });
 
+const searchQuestions = asyncHandler(async (req, res) => {
+  const searchKey = req.query.searchKey;
+  if (!searchKey) return;
+  if (searchKey === '') {
+    const questions = problemset();
+    return res
+      .status(200)
+      .json(new ApiResponse(200, questionList, 'question search'));
+  }
+
+  const searchList = searchKey.split(' ');
+
+  let searchString = [];
+  let searchNumber = [];
+
+  for (let word of searchList) {
+    if (!isNaN(word) && word.trim() !== '') {
+      searchNumber.push(Number(word));
+    } else if (word.trim() !== '') {
+      searchString.push(new RegExp(word, 'i'));
+    }
+  }
+  const questionList = await Question.find(
+    {
+      $or: [{ uid: { $in: searchNumber } }, { title: { $in: searchString } }],
+    },
+    { uid: 1, title: 1, difficulty: 1, topics: 1 },
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, questionList, 'question search'));
+});
+
 export {
   questionLike,
   questionComment,
@@ -294,4 +328,5 @@ export {
   questionById,
   multipleQuestions,
   questionTestcase,
+  searchQuestions,
 };

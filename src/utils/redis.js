@@ -12,6 +12,12 @@ export const removeUserToRoom = async (roomId, userId) => {
   await redis.srem(`room:${roomId}:user`, userId);
 };
 
+// get all the user in the room
+export const getUserToRoom = async (roomId) => {
+  const usersToRoom = await redis.smembers(`room:${roomId}:user`);
+  return usersToRoom;
+};
+
 // is userid present in the room
 export const isUserPresentInRoom = async (roomId, userId) => {
   return await redis.sismember(`room:${roomId}:user`, userId);
@@ -25,6 +31,13 @@ export const addUserOnline = async (roomId, userId) => {
 // remove user is online
 export const removeUserOnline = async (roomId, userId) => {
   await redis.srem(`room:${roomId}:online`, userId);
+};
+
+// get all the user is online
+export const getUsersOnline = async (roomId) => {
+  const usersOnline = await redis.smembers(`room:${roomId}:online`);
+
+  return usersOnline;
 };
 
 // check is user is online

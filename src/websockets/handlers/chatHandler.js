@@ -20,6 +20,7 @@ class chatHandler {
       );
     }
 
+    console.log('check this ----> ', roomId, userId, message);
     //get room data : clients,chatHistory,users
     const room = this.roomManager.getRoomFromRoomId(roomId);
 
@@ -41,8 +42,12 @@ class chatHandler {
 
     //push message in users key
     room.users.get(userId).push({ message, timestamp: data.timestamp });
-    await addChatMessage(roomId, data);
-    pub.publish(roomId, JSON.stringify(data));
+    try {
+      await addChatMessage(roomId, data);
+      pub.publish(roomId, JSON.stringify(data));
+    } catch (err) {
+      console.error(`Redis publish failed for room ${roomId}:`, err);
+    }
   }
 }
 

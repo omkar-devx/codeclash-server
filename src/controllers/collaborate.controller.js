@@ -3,7 +3,10 @@ import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import {
+  addUserToRoom,
   getChatMessage,
+  getUsersOnline,
+  getUserToRoom,
   removeUserOnline,
   removeUserToRoom,
 } from '../utils/redis.js';
@@ -52,6 +55,7 @@ const joinRoom = asyncHandler(async (req, res) => {
     roomId: room.roomId,
     questionArray: room.questionArray,
   });
+  const RedisUser = await addUserToRoom(room.roomId, userId);
   if (!roomJoined) {
     throw new ApiError(400, 'Unable to join the room');
   }
@@ -97,6 +101,7 @@ const leaveRoom = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, `${userId} leaved the room`));
 });
 
+// chat history
 const chatHistory = asyncHandler(async (req, res) => {
   console.log(req.body);
   const { roomId } = req.body;
@@ -111,4 +116,38 @@ const chatHistory = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, chatHistory, 'chat history'));
 });
 
-export { createRoom, joinRoom, getCurrentRoom, leaveRoom, chatHistory };
+// get all user in room
+const roomUsers = asyncHandler(async (req, res) => {
+  const { roomId } = req.body;
+  if (!roomId) {
+    throw new ApiError(400, 'room id not found');
+  }
+
+  const roomUsers = await getUserToRoom(roomId);
+
+  return res.status(200).json(new ApiResponse(200, roomUsers, 'room users'));
+});
+
+// get all user are online
+const usersOnline = asyncHandler(async (req, res) => {
+  const { roomId } = req.body;
+  if (!roomId) {
+    throw new ApiError(400, 'room id not found');
+  }
+
+  const usersOnline = await getUsersOnline(roomId);
+  console.log(usersOnline);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, usersOnline, 'users online'));
+});
+
+export {
+  createRoom,
+  joinRoom,
+  getCurrentRoom,
+  leaveRoom,
+  chatHistory,
+  roomUsers,
+  usersOnline,
+};

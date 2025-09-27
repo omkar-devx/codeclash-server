@@ -9,6 +9,7 @@ import {
   questionComment,
   questionLike,
   questionTestcase,
+  searchQuestions,
 } from '../controllers/question.controller.js';
 import { limiter } from '../middlewares/ratelimit.middleware.js';
 
@@ -16,7 +17,8 @@ const router = Router();
 
 //get
 router.route('/problemset').get(problemset);
-router.route('/:id').get(questionById);
+router.route('/search').get(searchQuestions);
+router.route('/id/:id').get(questionById);
 //post
 router.route('/create-question').post(verifyJWT, createQuestion);
 router.route('/multiple-question').post(verifyJWT, multipleQuestions);

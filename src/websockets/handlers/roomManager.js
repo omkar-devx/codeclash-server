@@ -114,6 +114,7 @@ map([
     const room = this.rooms.get(roomId);
 
     if (!room) {
+      console.log(this.rooms);
       throw new ApiError(400, 'Room is not present on current RoomId');
     }
 

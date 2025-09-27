@@ -52,19 +52,22 @@ class WebSocketService {
         userId: null,
       };
 
-      ws.on('message', (raw) => {
+      ws.on('message', async (raw) => {
         try {
           const msg = JSON.parse(raw);
           const { type, payload } = msg;
           console.log(type);
 
-          if (!type || typeof payload !== 'object') {
-            throw new ApiError(400, 'Invalid message structure');
+          if (!type) {
+            throw new ApiError(400, 'Message type missing');
+          }
+          if (payload && typeof payload !== 'object') {
+            throw new ApiError(400, 'Payload must be an object');
           }
 
           switch (type) {
             case 'join-room':
-              this.roomManager.addClientToRoom(
+              await this.roomManager.addClientToRoom(
                 ws,
                 payload.roomId,
                 payload.userId,
@@ -73,7 +76,7 @@ class WebSocketService {
               break;
 
             case 'chat':
-              this.chatHandler.sendMessage(ws, payload, this.pub);
+              await this.chatHandler.sendMessage(ws, payload, this.pub);
               break;
 
             default:
@@ -129,7 +132,7 @@ class WebSocketService {
     setInterval(() => {
       this.wss.clients.forEach((ws) => {
         if (!ws.isAlive) {
-          this.roomManager.removeClient(ws);
+          this.roomManager.this.roomManager.removeClient(ws, this.sub);
           return ws.terminate();
         }
         ws.isAlive = false;
