@@ -11,10 +11,12 @@ const testcaseSchema = new Schema(
       type: String,
       required: true,
     },
-    output: {
-      type: String,
-      required: true,
-    },
+    output: [
+      {
+        type: String,
+        required: true,
+      },
+    ],
     createdAt: {
       type: Date,
       default: Date.now,

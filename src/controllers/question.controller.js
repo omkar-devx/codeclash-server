@@ -8,49 +8,130 @@ import { Comment } from '../models/comment.model.js';
 import { Bookmark } from '../models/bookmark.model.js';
 import { Testcase } from '../models/testcase.model.js';
 
+// const createQuestion = asyncHandler(async (req, res) => {
+//   const user = req.user;
+//   if (!user) {
+//     throw new ApiError(401, 'Unauthorized Acess Please Login');
+//   }
+
+//   const { questionUid, title, description, difficulty, topics, hints } =
+//     req.body;
+//   if (
+//     !questionUid ||
+//     !title ||
+//     !description ||
+//     !difficulty ||
+//     !topics ||
+//     !hints
+//   ) {
+//     throw new ApiError(400, 'all fields are required');
+//   }
+
+//   const questionExists = await Question.findOne({ uid: questionUid });
+//   if (questionExists) {
+//     throw new ApiError(400, 'Question with this UID already exists');
+//   }
+
+//   const question = await Question.insertOne({
+//     uid: questionUid,
+//     title,
+//     description,
+//     difficulty,
+//     topics,
+//     hints,
+//   });
+
+//   if (!question) {
+//     throw new ApiError(
+//       402,
+//       'Unable to create the question due to a server error',
+//     );
+//   }
+
+//   return res
+//     .status(201)
+//     .json(new ApiResponse(201, question, 'Question is Successfully Created'));
+// });
+
 const createQuestion = asyncHandler(async (req, res) => {
   const user = req.user;
   if (!user) {
-    throw new ApiError(401, 'Unauthorized Acess Please Login');
+    throw new ApiError(401, 'Unauthorized Access. Please login.');
   }
 
-  const { questionUid, title, description, difficulty, topics, hints } =
-    req.body;
-  if (
-    !questionUid ||
-    !title ||
-    !description ||
-    !difficulty ||
-    !topics ||
-    !hints
-  ) {
-    throw new ApiError(400, 'all fields are required');
+  const {
+    questionUid,
+    title,
+    description,
+    difficulty,
+    topics = [],
+    hints = [],
+    examples = [],
+    constraints = [],
+  } = req.body;
+
+  // required fields
+  if (!questionUid || !title || !description || !difficulty) {
+    throw new ApiError(
+      400,
+      'Required fields: questionUid, title, description, difficulty',
+    );
   }
 
-  const questionExists = await Question.findOne({ uid: questionUid });
+  // basic type checks for arrays
+  if (!Array.isArray(topics) || !Array.isArray(hints)) {
+    throw new ApiError(400, 'topics and hints must be arrays');
+  }
+
+  // make sure UID is numeric and unique
+  const uidNumber = Number(questionUid);
+  if (Number.isNaN(uidNumber)) {
+    throw new ApiError(400, 'questionUid must be a number');
+  }
+
+  const questionExists = await Question.findOne({ uid: uidNumber }).lean();
   if (questionExists) {
     throw new ApiError(400, 'Question with this UID already exists');
   }
 
-  const question = await Question.insertOne({
-    uid: questionUid,
-    title,
-    description,
-    difficulty,
-    topics,
-    hints,
-  });
+  // normalize and prepare payload
+  const payload = {
+    uid: uidNumber,
+    title: String(title).trim(),
+    description: String(description), // plain text or sanitized HTML (sanitize in production)
+    difficulty: String(difficulty).toLowerCase(),
+    topics: topics.map((t) => String(t).trim()).filter(Boolean),
+    hints: hints.map((h) => String(h).trim()).filter(Boolean),
+    examples: Array.isArray(examples)
+      ? examples
+          .map((ex) => {
+            if (!ex || (!ex.input && !ex.output)) return null;
+            return {
+              input: String(ex.input || '').trim(),
+              output: String(ex.output || '').trim(),
+              explanation: String(ex.explanation || '').trim(),
+            };
+          })
+          .filter(Boolean)
+      : [],
+    constraints: Array.isArray(constraints)
+      ? constraints.map((c) => String(c).trim()).filter(Boolean)
+      : [],
+  };
+
+  // create with Mongoose
+  const question = await Question.create(payload);
 
   if (!question) {
     throw new ApiError(
-      402,
-      'Unable to create the question due to a server error',
+      500,
+      'Unable to create the question due to server error',
     );
   }
 
   return res
     .status(201)
-    .json(new ApiResponse(201, question, 'Question is Successfully Created'));
+    .json(new ApiResponse(201, question, 'Question successfully created'));
 });
 
 const questionById = asyncHandler(async (req, res) => {

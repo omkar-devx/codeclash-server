@@ -1,11 +1,21 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose from 'mongoose';
 
-const questionSchema = new Schema(
+const { Schema } = mongoose;
+
+const ExampleSchema = new Schema(
+  {
+    input: { type: String, required: true },
+    output: { type: String, required: true },
+    explanation: { type: String, default: '' },
+  },
+  { _id: false },
+);
+
+const QuestionSchema = new Schema(
   {
     uid: {
       type: Number,
       required: true,
-      index: true,
       unique: true,
     },
     title: {
@@ -21,6 +31,22 @@ const questionSchema = new Schema(
       enum: ['easy', 'medium', 'hard'],
       required: true,
     },
+    examples: {
+      type: [ExampleSchema],
+      default: [],
+    },
+    constraints: {
+      type: [String],
+      default: [],
+    },
+    topics: {
+      type: [String],
+      default: [],
+    },
+    hints: {
+      type: [String],
+      default: [],
+    },
     submitted: {
       type: Number,
       default: 0,
@@ -29,18 +55,6 @@ const questionSchema = new Schema(
       type: Number,
       default: 0,
     },
-    topics: [
-      {
-        type: String,
-        required: true,
-      },
-    ],
-    hints: [
-      {
-        type: String,
-        required: true,
-      },
-    ],
     isActive: {
       type: Boolean,
       default: true,
@@ -49,4 +63,5 @@ const questionSchema = new Schema(
   { timestamps: true },
 );
 
-export const Question = mongoose.model('Question', questionSchema);
+export const Question = mongoose.model('Question', QuestionSchema);
+export default Question;

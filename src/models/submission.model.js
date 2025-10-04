@@ -19,6 +19,9 @@ const submissionSchema = new Schema(
     testcase_count: {
       type: Number,
     },
+    testcase_passed: {
+      type: Number,
+    },
     time: {
       type: Number,
     },
@@ -29,9 +32,18 @@ const submissionSchema = new Schema(
       type: String,
       default: null,
     },
+    expected_output: {
+      type: String,
+    },
+    stdout: {
+      type: String,
+    },
     status: {
       type: String,
       enum: ['passed', 'failed'],
+    },
+    compile_output: {
+      type: String,
     },
     message: {
       type: String,
