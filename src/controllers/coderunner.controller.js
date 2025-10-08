@@ -13,6 +13,7 @@ const codeRun = asyncHandler(async (req, res) => {
   const mode = req.query.mode === 'quick' ? 'full' : 'quick';
 
   const { questionUId, language_id, source_code } = req.body;
+  // console.log(req.body);
   if (!questionUId || !language_id || !source_code) {
     throw new ApiError(401, 'missing fields during code running');
   }

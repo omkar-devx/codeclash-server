@@ -7,6 +7,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { Comment } from '../models/comment.model.js';
 import { Bookmark } from '../models/bookmark.model.js';
 import { Testcase } from '../models/testcase.model.js';
+import { Submission } from '../models/submission.model.js';
 
 // const createQuestion = asyncHandler(async (req, res) => {
 //   const user = req.user;
@@ -63,6 +64,7 @@ const createQuestion = asyncHandler(async (req, res) => {
     questionUid,
     title,
     description,
+    defaultCode,
     difficulty,
     topics = [],
     hints = [],
@@ -71,7 +73,7 @@ const createQuestion = asyncHandler(async (req, res) => {
   } = req.body;
 
   // required fields
-  if (!questionUid || !title || !description || !difficulty) {
+  if (!questionUid || !title || !description || !difficulty || !defaultCode) {
     throw new ApiError(
       400,
       'Required fields: questionUid, title, description, difficulty',
@@ -99,6 +101,7 @@ const createQuestion = asyncHandler(async (req, res) => {
     uid: uidNumber,
     title: String(title).trim(),
     description: String(description), // plain text or sanitized HTML (sanitize in production)
+    defaultCode: defaultCode,
     difficulty: String(difficulty).toLowerCase(),
     topics: topics.map((t) => String(t).trim()).filter(Boolean),
     hints: hints.map((h) => String(h).trim()).filter(Boolean),
@@ -153,7 +156,7 @@ const problemset = asyncHandler(async (req, res) => {
   const questions = await Question.find(
     {},
     { uid: 1, title: 1, difficulty: 1, topics: 1 },
-  );
+  ).sort({ uid: 1 });
 
   if (questions.length === 0) {
     throw new ApiError(404, 'No questions found in the problem set');
@@ -400,6 +403,30 @@ const searchQuestions = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, questionList, 'question search'));
 });
 
+const isQuestionSubmitted = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id && typeof id !== 'number') {
+    throw new ApiError(400, 'question id is not found!!!');
+  }
+
+  const question = await Question.findOne({ uid: id });
+
+  if (!question) {
+    throw new ApiError(400, 'question is not found on given id');
+  }
+
+  const submission = await Submission.findOne({ questionUId: id });
+  // console.log(submission);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { isSubmitted: submission ? true : false },
+        'submission result of the current question',
+      ),
+    );
+});
 export {
   questionLike,
   questionComment,
@@ -410,4 +437,5 @@ export {
   multipleQuestions,
   questionTestcase,
   searchQuestions,
+  isQuestionSubmitted,
 };

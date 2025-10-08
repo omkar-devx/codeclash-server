@@ -11,6 +11,15 @@ const ExampleSchema = new Schema(
   { _id: false },
 );
 
+const DefaultCodeSchema = new Schema(
+  {
+    cpp: { type: String, required: true },
+    java: { type: String, required: true },
+    python: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const QuestionSchema = new Schema(
   {
     uid: {
@@ -25,6 +34,10 @@ const QuestionSchema = new Schema(
     description: {
       type: String,
       required: true,
+    },
+    defaultCode: {
+      type: DefaultCodeSchema,
+      default: {},
     },
     difficulty: {
       type: String,
