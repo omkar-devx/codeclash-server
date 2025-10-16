@@ -9,6 +9,8 @@ import { UserAchievements } from '../models/userAchievements.model.js';
 import { UserPreferences } from '../models/userPreferences.model.js';
 import jwt from 'jsonwebtoken';
 import { Testcase } from '../models/testcase.model.js';
+import { Submission } from '../models/submission.model.js';
+import Question from '../models/question.model.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -377,4 +379,212 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { userRegsiter, userLogin, currentUser, userLogout, refreshAccessToken };
+const getUserProfile = asyncHandler(async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      throw new ApiError(404, 'UserId not found!!');
+    }
+
+    const userDoc = await User.findOne({ username: userId })
+      .select('_id fullName')
+      .lean();
+    if (!userDoc) {
+      throw new ApiError(404, 'User not found');
+    }
+    const uid = userDoc._id;
+
+    const userprofile = await UserProfile.findOne({ userId: uid }).lean();
+    if (!userprofile) {
+      throw new ApiError(400, 'User Profile not found!!');
+    }
+    const distQuestionSolved = await Submission.aggregate([
+      { $match: { userId: uid, status: 'passed' } },
+      { $group: { _id: '$questionUId' } },
+      { $count: 'uniqueQuestionCount' },
+    ]);
+    const totalSolved = distQuestionSolved[0]?.uniqueQuestionCount || 0;
+
+    const [totalSubmissions, passedSubmissions] = await Promise.all([
+      Submission.countDocuments({ userId: uid }),
+      Submission.countDocuments({ userId: uid, status: 'passed' }),
+    ]);
+
+    const acceptanceRate =
+      totalSubmissions > 0
+        ? Math.round((passedSubmissions / totalSubmissions) * 10000) / 100
+        : 0;
+
+    const months = 12;
+    const fromDate = new Date();
+    fromDate.setUTCDate(1);
+    fromDate.setUTCHours(0, 0, 0, 0);
+    fromDate.setUTCMonth(fromDate.getUTCMonth() - (months - 1));
+
+    const monthlyAgg = await Submission.aggregate([
+      {
+        $match: {
+          userId: uid,
+          status: 'passed',
+          createdAt: { $gte: fromDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          year: '$_id.year',
+          month: '$_id.month',
+          count: 1,
+        },
+      },
+      { $sort: { year: 1, month: 1 } },
+    ]);
+
+    const aggMap = new Map(
+      monthlyAgg.map((item) => {
+        const key = `${String(item.year).padStart(4, '0')}-${String(item.month).padStart(2, '0')}`;
+        return [key, item.count];
+      }),
+    );
+
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const monthlySolved = [];
+    for (let i = 0; i < months; i++) {
+      const d = new Date(
+        Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth() + i, 1),
+      );
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth() + 1;
+      const key = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
+      monthlySolved.push({
+        key,
+        year,
+        month,
+        label: monthNames[month - 1],
+        count: aggMap.get(key) || 0,
+      });
+    }
+
+    let solvedByDifficulty = [
+      { name: 'Easy', value: 0, color: '#10b981' },
+      { name: 'Medium', value: 0, color: '#f59e0b' },
+      { name: 'Hard', value: 0, color: '#ef4444' },
+    ];
+
+    try {
+      const solvedIdsAgg = await Submission.aggregate([
+        { $match: { userId: uid, status: 'passed' } },
+        { $group: { _id: '$questionUId' } },
+        { $project: { questionUId: '$_id', _id: 0 } },
+      ]);
+      const solvedIds = solvedIdsAgg.map((r) => r.questionUId).filter(Boolean);
+      if (solvedIds.length && typeof Question !== 'undefined') {
+        const difficulties = await Question.aggregate([
+          { $match: { uid: { $in: solvedIds } } },
+          { $group: { _id: '$difficulty', count: { $sum: 1 } } },
+        ]);
+
+        const diffMap = difficulties.reduce((acc, cur) => {
+          acc[String(cur._id).toLowerCase()] = cur.count;
+          return acc;
+        }, {});
+
+        solvedByDifficulty = solvedByDifficulty.map((item) => ({
+          ...item,
+          value: diffMap[item.name.toLowerCase()] || 0,
+        }));
+      }
+    } catch (err) {
+      console.warn(
+        'Could not compute solvedByDifficulty:',
+        err?.message || err,
+      );
+    }
+
+    const N = 10;
+
+    const solvedHistory = await Submission.aggregate([
+      { $match: { userId: uid, status: 'passed' } },
+      { $sort: { createdAt: -1 } },
+      { $limit: N },
+      {
+        $lookup: {
+          from: 'questions',
+          localField: 'questionUId',
+          foreignField: 'uid',
+          as: 'questionDoc',
+        },
+      },
+      { $unwind: { path: '$questionDoc', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          sid: '$_id',
+          uid: '$questionDoc.uid',
+          title: '$questionDoc.title',
+          difficulty: '$questionDoc.difficulty',
+          topic: { $arrayElemAt: ['$questionDoc.topics', 0] },
+          date: '$createdAt',
+        },
+      },
+    ]);
+
+    const date = new Date(userprofile.createdAt);
+    const formattedDate = `${monthNames[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+
+    const totalQuestions = await Question.countDocuments();
+
+    const userProfileData = {
+      username: userId,
+      fullName: userDoc.fullName,
+      avatarUrl: userprofile.avatarUrl,
+      bio: userprofile.bio,
+      joinedDate: formattedDate,
+      location: userprofile.country,
+      totalSolved,
+      totalQuestions,
+      acceptanceRate,
+      monthlySolved: monthlySolved,
+      solvedByDifficulty,
+      solvedHistory,
+    };
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, userProfileData, 'User profile data'));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+export {
+  userRegsiter,
+  userLogin,
+  currentUser,
+  userLogout,
+  refreshAccessToken,
+  getUserProfile,
+};

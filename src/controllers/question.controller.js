@@ -427,6 +427,25 @@ const isQuestionSubmitted = asyncHandler(async (req, res) => {
       ),
     );
 });
+
+const getSubmissionById = asyncHandler(async (req, res) => {
+  const { sid } = req.params;
+
+  if (!sid) {
+    throw new ApiError(400, 'Submission Id not found!!');
+  }
+
+  const submission = await Submission.findById(sid);
+
+  if (!submission) {
+    throw new ApiError(404, 'Submission not found');
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, submission, 'Submission By Id'));
+});
+
 export {
   questionLike,
   questionComment,
@@ -438,4 +457,5 @@ export {
   questionTestcase,
   searchQuestions,
   isQuestionSubmitted,
+  getSubmissionById,
 };

@@ -18,6 +18,18 @@ const userAchievementsSchema = new Schema(
     totalSubmissions: {
       type: Number,
     },
+    ranking: {
+      type: Number,
+      default: 0,
+    },
+    reputation: {
+      type: Number,
+      default: 0,
+    },
+    steak: {
+      type: Number,
+      default: 0,
+    },
     questionSolved: [
       {
         type: mongoose.Schema.Types.ObjectId,

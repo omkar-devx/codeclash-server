@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 import {
   createQuestion,
+  getSubmissionById,
   isQuestionSubmitted,
   multipleQuestions,
   problemset,
@@ -21,6 +22,7 @@ router.route('/problemset').get(problemset);
 router.route('/search').get(searchQuestions);
 router.route('/id/:id').get(questionById);
 router.route('/issubmit/:id').get(isQuestionSubmitted);
+router.route('/submission/:sid').get(getSubmissionById);
 //post
 router.route('/create-question').post(verifyJWT, createQuestion);
 router.route('/multiple-question').post(verifyJWT, multipleQuestions);
