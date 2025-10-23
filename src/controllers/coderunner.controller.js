@@ -190,7 +190,6 @@ const codeSubmit = asyncHandler(async (req, res) => {
     );
   }
 
-  // DB submission logic unchanged
   let maxTime = 0;
   let maxMemory = 0;
   let failedTestCase = null;
@@ -205,7 +204,9 @@ const codeSubmit = asyncHandler(async (req, res) => {
   for (let i = 0; i < result.submissions.length; i++) {
     let test = result.submissions[i];
     let testcaseArray = testcases[i].output;
-    stdout = test.stdout ? Buffer.from(test.stdout, 'base64').toString() : '';
+    stdout = test.stdout
+      ? Buffer.from(test.stdout, 'base64').toString().trim()
+      : '';
     if (testcaseArray.includes(stdout)) {
       testcase_passed++;
     }
@@ -219,7 +220,9 @@ const codeSubmit = asyncHandler(async (req, res) => {
     if (time > maxTime) maxTime = time;
 
     if (test.memory > maxMemory) maxMemory = test.memory;
-    stdout = test.stdout ? Buffer.from(test.stdout, 'base64').toString() : '';
+    stdout = test.stdout
+      ? Buffer.from(test.stdout, 'base64').toString().trim()
+      : '';
     if (!testcaseArray.includes(stdout)) {
       failedTestCase = Buffer.from(test.stdin, 'base64').toString();
       status = 'failed';

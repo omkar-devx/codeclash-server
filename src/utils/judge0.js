@@ -2,25 +2,26 @@ import axios from 'axios';
 import { ApiError } from './ApiError.js';
 
 // ---------------------CODECLASH PERSONAL CODE EXECUTION SYSTEM---------------------
-// const codeExecutionUrl = process.env.CODECLASH_CODE_EXECUTION;
+const codeExecutionUrl = process.env.CODECLASH_CODE_EXECUTION;
 
-// const postHeaders = {
-//   'Content-Type': 'application/json',
-// };
-
-// const getHeaders = {};
-
-//----------------- RAPID API CONFG ---------------------
-const codeExecutionUrl = 'https://judge0-ce.p.rapidapi.com';
 const postHeaders = {
-  'x-rapidapi-key': process.env.RAPID_API_KEY,
-  'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
   'Content-Type': 'application/json',
 };
-const getHeaders = {
-  'x-rapidapi-key': process.env.RAPID_API_KEY,
-  'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
-};
+
+const getHeaders = {};
+
+//----------------- RAPID API CONFG ---------------------
+// const codeExecutionUrl = 'https://judge0-ce.p.rapidapi.com';
+// const postHeaders = {
+//   'x-rapidapi-key': process.env.RAPID_API_KEY,
+//   'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
+//   'Content-Type': 'application/json',
+// };
+// const getHeaders = {
+//   'x-rapidapi-key': process.env.RAPID_API_KEY,
+//   'x-rapidapi-host': 'judge0-ce.p.rapidapi.com',
+// };
+
 // ---------------------------------------------------------------
 const JUDGE0_POST_TIMEOUT = 120000; // 120s for POST (submissions)
 const JUDGE0_GET_TIMEOUT = 10000; // 10s for each GET attempt

@@ -8,6 +8,7 @@ import { Comment } from '../models/comment.model.js';
 import { Bookmark } from '../models/bookmark.model.js';
 import { Testcase } from '../models/testcase.model.js';
 import { Submission } from '../models/submission.model.js';
+import QuestionSol from '../models/questionSol.model.js';
 
 // const createQuestion = asyncHandler(async (req, res) => {
 //   const user = req.user;
@@ -446,6 +447,55 @@ const getSubmissionById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, submission, 'Submission By Id'));
 });
 
+const questionSolution = asyncHandler(async (req, res) => {
+  const { uid, solution } = req.body;
+
+  if (!uid) {
+    throw new ApiError(400, "couldn't found question id");
+  }
+
+  const question = await Question.findOne({ uid });
+
+  if (!question) {
+    throw new ApiError(400, 'no questions of the given id');
+  }
+
+  const isSolPresent = await QuestionSol.findOne({ uid });
+
+  if (isSolPresent) {
+    throw new ApiError(400, 'solution of given question id is existed');
+  }
+
+  const submitSol = await QuestionSol.create({
+    uid,
+    solution,
+  });
+
+  if (!submitSol) {
+    throw new ApiError(400, 'solution is not submitted');
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, submitSol, 'Solution Submitted'));
+});
+
+const getQuestionSolution = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    throw new ApiError(400, 'question id not found');
+  }
+
+  const solution = await QuestionSol.findOne({ uid: id });
+  if (!solution) {
+    throw new ApiError(400, "question's solution is not present");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, solution, 'questions solution'));
+});
+
 export {
   questionLike,
   questionComment,
@@ -458,4 +508,6 @@ export {
   searchQuestions,
   isQuestionSubmitted,
   getSubmissionById,
+  questionSolution,
+  getQuestionSolution,
 };
