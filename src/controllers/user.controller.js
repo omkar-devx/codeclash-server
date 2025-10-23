@@ -77,7 +77,8 @@ const userRegsiter = asyncHandler(async (req, res) => {
       throw new ApiError(400, 'cloudinary upload failed');
     }
   }
-  const finalAvatarUrl = defaultAvatar || avatarCloudinaryUrl.url;
+  console.log('avatar', defaultAvatar, avatarCloudinaryUrl?.url);
+  const finalAvatarUrl = avatarCloudinaryUrl?.url || defaultAvatar;
 
   // created a user in user model
   const user = await User.create({
