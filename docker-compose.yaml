@@ -1,19 +1,19 @@
+version: '3.8'
 services:
   redis:
-    image: redis:7.2-alpine
-    container_name: redis
+    image: redis:7-alpine
+    container_name: codeclash_redis
+    restart: unless-stopped
     ports:
       - '6379:6379'
-    command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - redis-data:/data
-  yjs:
-    image: alokinplc/y-websocket
-    container_name: yjs-server
-    ports:
-      - '6000:6000'
-    environment:
-      - PORT=6000
+    networks:
+      - codeclash_net
 
 volumes:
   redis-data:
+
+networks:
+  codeclash_net:
+    driver: bridge

@@ -1,0 +1,31 @@
+# Node
+node_modules
+npm-debug.log
+package-lock.json
+
+# Local env & secrets (do not bake into image)
+.env
+*.pem
+*.key
+
+# Git / Editor / OS
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+logs
+*.log
+tmp
+dist
+build
+
+# Docker files (avoid copying docker socket etc)
+docker-compose*.yml
+Dockerfile.*
+
+# Other
+coverage
