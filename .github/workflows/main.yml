@@ -1,0 +1,93 @@
+name: CI/CD - Node.js Deployment to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: azure-vm
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry (ACR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build & Push Nginx Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          file: nginx/Dockerfile
+          push: true
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.node
+          push: true
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
+
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+          script: |
+            echo "Deployment sequence started on VM..."
+
+            # 1. Log in to ACR on the VM to authenticate pull
+            sudo docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }}
+
+            # 2. Stop and remove the old container instance (use '|| true' to avoid failure if container doesn't exist)
+            sudo docker rm -f express-server-container || true
+            sudo docker rm -f nginx || true
+
+            # 3. Remove old/unused images to free up disk space
+            sudo docker image prune -af
+
+            # 4. Pull the newly built image
+            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
+            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
+
+            # Create Docker network if it doesn't exist
+            sudo docker network inspect app-network >/dev/null 2>&1 || sudo docker network create app-network
+
+            # 5. Run the new container, passing SERVER_PORT securely as an environment variable
+            # -p 3000:3000 maps VM Port 3000 to Container Port 3000
+            sudo docker run -d \
+              --name express-server-container \
+              --network app-network \
+              -e PORT=${{ secrets.PORT }} \
+              -e MONGODB_URI=${{ secrets.MONGODB_URI }} \
+              -e CORS_ORIGIN=${{ secrets.CORS_ORIGIN }} \
+              -e ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }} \
+              -e ACCESS_TOKEN_EXPIRY=${{ secrets.ACCESS_TOKEN_EXPIRY }} \
+              -e REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }} \
+              -e REFRESH_TOKEN_EXPIRY=${{ secrets.REFRESH_TOKEN_EXPIRY }} \
+              -e CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} \
+              -e CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
+              -e CLOUDINARY_SECRET_KEY=${{ secrets.CLOUDINARY_SECRET_KEY }} \
+              -e RAPID_API_KEY=${{ secrets.RAPID_API_KEY }} \
+              -e CODECLASH_CODE_EXECUTION=${{ secrets.CODECLASH_CODE_EXECUTION }} \
+              ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
+
+
+            sudo docker run -d \
+              --name nginx \
+              --network app-network \
+              -p 80:80 \
+              ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
+
+            echo "Deployment Complete. Access your app at http://${{ secrets.VM_HOST }}:3000"
