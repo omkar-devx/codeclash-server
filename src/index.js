@@ -1,4 +1,5 @@
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
+config();
 import http from 'http';
 import connectDB from './db/index.js';
 import app from './app.js';
@@ -7,12 +8,6 @@ import YjsWebSocketServer from './websockets/yjsServer.js';
 import { parse } from 'url';
 
 const PORT = process.env.PORT || 8000;
-
-// console.log = function (...args) {
-//   console.trace(...args);
-// };
-
-dotenv.config({ path: './.env' });
 
 const server = http.createServer(app);
 
