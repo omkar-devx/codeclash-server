@@ -69,17 +69,18 @@ jobs:
             sudo docker run -d \
               --name express-server-container \
               --network codeclash_net \
-              -e PORT=${{ secrets.PORT }} \
-              -e MONGODB_URI=${{ secrets.MONGODB_URI }} \
-              -e ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }} \
-              -e ACCESS_TOKEN_EXPIRY=${{ secrets.ACCESS_TOKEN_EXPIRY }} \
-              -e REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }} \
-              -e REFRESH_TOKEN_EXPIRY=${{ secrets.REFRESH_TOKEN_EXPIRY }} \
-              -e CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} \
-              -e CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
-              -e CLOUDINARY_SECRET_KEY=${{ secrets.CLOUDINARY_SECRET_KEY }} \
-              -e RAPID_API_KEY=${{ secrets.RAPID_API_KEY }} \
-              -e CODECLASH_CODE_EXECUTION=${{ secrets.CODECLASH_CODE_EXECUTION }} \
+              -e PORT="${{ secrets.PORT }}" \
+              -e CORS_ORIGIN="${{ secrets.CORS_ORIGIN }}" \
+              -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+              -e ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}" \
+              -e ACCESS_TOKEN_EXPIRY="${{ secrets.ACCESS_TOKEN_EXPIRY }}" \
+              -e REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}" \
+              -e REFRESH_TOKEN_EXPIRY="${{ secrets.REFRESH_TOKEN_EXPIRY }}" \
+              -e CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
+              -e CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
+              -e CLOUDINARY_SECRET_KEY="${{ secrets.CLOUDINARY_SECRET_KEY }}" \
+              -e RAPID_API_KEY="${{ secrets.RAPID_API_KEY }}" \
+              -e CODECLASH_CODE_EXECUTION="${{ secrets.CODECLASH_CODE_EXECUTION }}" \
               ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
 
 
