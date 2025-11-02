@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { serverStartTimeInstance } from './utils/uptime.js';
 
 const app = express();
 
@@ -30,7 +31,10 @@ app.use(express.static('public'));
 app.use(cookieParser());
 
 app.get('/', (req, res) => {
-  res.send('codeclash - server');
+  res.json({
+    message: 'OK',
+    uptime: serverStartTimeInstance.getStartTime(),
+  });
 });
 
 // router imports
@@ -52,7 +56,7 @@ app.use(`${prefix}/coderunner`, coderunnerRouter);
 app.use(`${prefix}/collaborate`, collaborateRouter);
 
 // custom error response
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.log(err);
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
