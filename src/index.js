@@ -9,6 +9,11 @@ import { parse } from 'url';
 
 const PORT = process.env.PORT || 8000;
 
+if (process.env.SIMULATE_CONTAINER_FAILURE === 'true') {
+  console.error('Simulated container failure');
+  process.exit(1);
+}
+
 const server = http.createServer(app);
 
 connectDB()

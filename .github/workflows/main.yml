@@ -82,6 +82,7 @@ jobs:
               -e CLOUDINARY_SECRET_KEY="${{ secrets.CLOUDINARY_SECRET_KEY }}" \
               -e RAPID_API_KEY="${{ secrets.RAPID_API_KEY }}" \
               -e CODECLASH_CODE_EXECUTION="${{ secrets.CODECLASH_CODE_EXECUTION }}" \
+              -e SIMULATE_CONTAINER_FAILURE="${{ secrets.SIMULATE_CONTAINER_FAILURE }}" \
               ${{ secrets.ACR_LOGIN_SERVER }}/express-server:$COMMIT_SHA
 
             # 5. Wait a few seconds and check if new container is running
