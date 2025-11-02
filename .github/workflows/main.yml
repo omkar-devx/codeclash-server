@@ -51,82 +51,72 @@ jobs:
           script: |
             echo "Deployment sequence started on VM..."
             COMMIT_SHA="${{ github.sha }}"
-            NEW_CONTAINER_NAME="express-server-container-new"
-            OLD_CONTAINER_NAME="express-server-container"
+            ACR_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
 
             # 1. Log in to ACR on the VM to authenticate pull
-            sudo docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }}
+            sudo docker login $ACR_SERVER -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }}
 
-            # 2. Create Docker network if it doesn't exist
-            sudo docker network inspect codeclash_net >/dev/null 2>&1 || sudo docker network create codeclash_net
+            # 2. Pull the newly built images (using SHA tag for version tracking)
+            echo "Pulling new images with SHA: $COMMIT_SHA"
+            sudo docker pull $ACR_SERVER/express-server:$COMMIT_SHA
+            sudo docker pull $ACR_SERVER/nginx:$COMMIT_SHA
 
-            # 3. Pull the newly built image (using SHA tag for version tracking)
-            echo "Pulling new image with SHA: $COMMIT_SHA"
-            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/express-server:$COMMIT_SHA
-            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/nginx:$COMMIT_SHA
+            # 3. Tag images as latest for docker-compose
+            sudo docker tag $ACR_SERVER/express-server:$COMMIT_SHA $ACR_SERVER/express-server:latest
+            sudo docker tag $ACR_SERVER/nginx:$COMMIT_SHA $ACR_SERVER/nginx:latest
 
-            # 4. Start new express-server container with temporary name (keep old one running)
-            echo "Starting new express-server container..."
-            sudo docker run -d \
-              --name $NEW_CONTAINER_NAME \
-              --network codeclash_net \
-              -e PORT="${{ secrets.PORT }}" \
-              -e CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}" \
-              -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
-              -e ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}" \
-              -e ACCESS_TOKEN_EXPIRY="${{ secrets.ACCESS_TOKEN_EXPIRY }}" \
-              -e REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}" \
-              -e REFRESH_TOKEN_EXPIRY="${{ secrets.REFRESH_TOKEN_EXPIRY }}" \
-              -e CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
-              -e CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
-              -e CLOUDINARY_SECRET_KEY="${{ secrets.CLOUDINARY_SECRET_KEY }}" \
-              -e RAPID_API_KEY="${{ secrets.RAPID_API_KEY }}" \
-              -e CODECLASH_CODE_EXECUTION="${{ secrets.CODECLASH_CODE_EXECUTION }}" \
-              -e SIMULATE_CONTAINER_FAILURE="${{ secrets.SIMULATE_CONTAINER_FAILURE }}" \
-              ${{ secrets.ACR_LOGIN_SERVER }}/express-server:$COMMIT_SHA
-
-            # 5. Wait a few seconds and check if new container is running
-            echo "Waiting for new container to start..."
-            sleep 5
-
-            if sudo docker ps | grep -q $NEW_CONTAINER_NAME; then
-              echo "New container started successfully. Checking health..."
-              sleep 10
-              
-              # Check if container is still running (simple health check)
-              if sudo docker ps | grep -q $NEW_CONTAINER_NAME; then
-                echo "New container is healthy. Switching to new container..."
-                
-                # Stop and remove old container (if it exists)
-                sudo docker rm -f $OLD_CONTAINER_NAME || true
-                
-                # Rename new container to production name
-                sudo docker rename $NEW_CONTAINER_NAME $OLD_CONTAINER_NAME
-                
-                echo "Express-server deployment successful!"
-              else
-                echo "ERROR: New container stopped unexpectedly. Keeping old container running."
-                sudo docker rm -f $NEW_CONTAINER_NAME || true
+            # 4. Navigate to project directory (ensure docker-compose files are available)
+            REPO_DIR=~/codeclash-server
+            if [ ! -d "$REPO_DIR" ]; then
+              REPO_DIR=/opt/codeclash-server
+              if [ ! -d "$REPO_DIR" ]; then
+                echo "Repository directory not found. Please ensure the repository is cloned at ~/codeclash-server or /opt/codeclash-server"
                 exit 1
               fi
+            fi
+            cd $REPO_DIR
+            echo "Using repository directory: $REPO_DIR"
+
+            # 5. Export environment variables for docker-compose
+            export PORT="${{ secrets.PORT }}"
+            export MONGODB_URI="${{ secrets.MONGODB_URI }}"
+            export CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}"
+            export ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}"
+            export ACCESS_TOKEN_EXPIRY="${{ secrets.ACCESS_TOKEN_EXPIRY }}"
+            export REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}"
+            export REFRESH_TOKEN_EXPIRY="${{ secrets.REFRESH_TOKEN_EXPIRY }}"
+            export CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}"
+            export CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}"
+            export CLOUDINARY_SECRET_KEY="${{ secrets.CLOUDINARY_SECRET_KEY }}"
+            export RAPID_API_KEY="${{ secrets.RAPID_API_KEY }}"
+            export CODECLASH_CODE_EXECUTION="${{ secrets.CODECLASH_CODE_EXECUTION }}"
+            export SIMULATE_CONTAINER_FAILURE="${{ secrets.SIMULATE_CONTAINER_FAILURE }}"
+            export ACR_REGISTRY="$ACR_SERVER"
+
+            # 6. Stop existing containers gracefully
+            echo "Stopping existing containers..."
+            sudo -E docker-compose -f docker-compose.yaml -f docker-compose.prod.yml down || true
+
+            # 7. Start services with docker-compose (merges base + prod override)
+            echo "Starting services with docker-compose..."
+            sudo -E docker-compose -f docker-compose.yaml -f docker-compose.prod.yml up -d
+
+            # 8. Wait for services to be healthy
+            echo "Waiting for services to be healthy..."
+            sleep 15
+
+            # 9. Verify containers are running
+            if sudo docker ps | grep -q express-server-container && sudo docker ps | grep -q nginx && sudo docker ps | grep -q codeclash_redis; then
+              echo "All containers started successfully!"
             else
-              echo "ERROR: Failed to start new container. Keeping old container running."
-              sudo docker rm -f $NEW_CONTAINER_NAME || true
+              echo "ERROR: Some containers failed to start. Checking logs..."
+              sudo -E docker-compose -f docker-compose.yaml -f docker-compose.prod.yml logs
               exit 1
             fi
 
-            # 6. Update nginx (less critical, can be done more safely)
-            echo "Updating nginx..."
-            sudo docker rm -f nginx || true
-            sudo docker run -d \
-              --name nginx \
-              --network codeclash_net \
-              -p 80:80 \
-              ${{ secrets.ACR_LOGIN_SERVER }}/nginx:$COMMIT_SHA
-
-            # 7. Clean up old images (keep last 2 versions)
+            # 11. Clean up old images (keep last 2 versions)
             echo "Cleaning up old images..."
             sudo docker image prune -af --filter "until=24h" || true
 
-            echo "Deployment Complete. Access your app at http://${{ secrets.VM_HOST }}:3000"
+            echo "Deployment Complete. Access your app at http://${{ secrets.VM_HOST }}"
             echo "Deployed commit SHA: $COMMIT_SHA"

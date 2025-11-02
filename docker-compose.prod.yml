@@ -1,0 +1,20 @@
+version: '3.8'
+
+# Production override file
+# This file extends docker-compose.yaml and only overrides what's different for production
+# Usage: docker-compose -f docker-compose.yaml -f docker-compose.prod.yml up -d
+#
+# When image is specified, it overrides the build configuration from the base file
+
+services:
+  express-server:
+    # Override build with pre-built image from registry
+    image: ${ACR_REGISTRY:-registry}/express-server:latest
+
+  nginx:
+    # Override build with pre-built image from registry
+    image: ${ACR_REGISTRY:-registry}/nginx:latest
+
+  redis:
+    # Override build with pre-built image from registry
+    image: ${ACR_REGISTRY:-registry}/redis:latest
