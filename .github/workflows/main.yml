@@ -96,24 +96,36 @@ jobs:
             export SIMULATE_CONTAINER_FAILURE="${{ secrets.SIMULATE_CONTAINER_FAILURE }}"
             export ACR_REGISTRY="$ACR_SERVER"
 
-            # 6. Stop existing containers gracefully
+            # 6. Detect docker compose command (V2 uses 'docker compose', V1 uses 'docker-compose')
+            if sudo docker compose version >/dev/null 2>&1; then
+              DOCKER_COMPOSE_CMD="docker compose"
+              echo "Using Docker Compose V2 (docker compose)"
+            elif sudo docker-compose version >/dev/null 2>&1; then
+              DOCKER_COMPOSE_CMD="docker-compose"
+              echo "Using Docker Compose V1 (docker-compose)"
+            else
+              echo "ERROR: Neither 'docker compose' nor 'docker-compose' is available. Please install Docker Compose."
+              exit 1
+            fi
+
+            # 7. Stop existing containers gracefully
             echo "Stopping existing containers..."
-            sudo -E docker-compose -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml down || true
+            sudo -E $DOCKER_COMPOSE_CMD -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml down || true
 
-            # 7. Start services with docker-compose (merges base + prod override)
-            echo "Starting services with docker-compose..."
-            sudo -E docker-compose -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml up -d
+            # 8. Start services with docker compose (merges base + prod override)
+            echo "Starting services with docker compose..."
+            sudo -E $DOCKER_COMPOSE_CMD -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml up -d
 
-            # 8. Wait for services to be healthy
+            # 9. Wait for services to be healthy
             echo "Waiting for services to be healthy..."
             sleep 15
 
-            # 9. Verify containers are running
+            # 10. Verify containers are running
             if sudo docker ps | grep -q express-server-container && sudo docker ps | grep -q nginx && sudo docker ps | grep -q codeclash_redis; then
               echo "All containers started successfully!"
             else
               echo "ERROR: Some containers failed to start. Checking logs..."
-              sudo -E docker-compose -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml logs
+              sudo -E $DOCKER_COMPOSE_CMD -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml logs
               exit 1
             fi
 
