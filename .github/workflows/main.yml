@@ -27,7 +27,9 @@ jobs:
           context: ./nginx
           file: nginx/Dockerfile
           push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/nginx:${{ github.sha }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
@@ -35,7 +37,9 @@ jobs:
           context: .
           file: Dockerfile.node
           push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/express-server:${{ github.sha }}
 
       - name: Deploy to Azure VM via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -46,28 +50,25 @@ jobs:
 
           script: |
             echo "Deployment sequence started on VM..."
+            COMMIT_SHA="${{ github.sha }}"
+            NEW_CONTAINER_NAME="express-server-container-new"
+            OLD_CONTAINER_NAME="express-server-container"
 
             # 1. Log in to ACR on the VM to authenticate pull
             sudo docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }}
 
-            # 2. Stop and remove the old container instance (use '|| true' to avoid failure if container doesn't exist)
-            sudo docker rm -f express-server-container || true
-            sudo docker rm -f nginx || true
-
-            # 3. Remove old/unused images to free up disk space
-            sudo docker image prune -af
-
-            # 4. Pull the newly built image
-            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
-            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
-
-            # Create Docker network if it doesn't exist
+            # 2. Create Docker network if it doesn't exist
             sudo docker network inspect codeclash_net >/dev/null 2>&1 || sudo docker network create codeclash_net
 
-            # 5. Run the new container, passing SERVER_PORT securely as an environment variable
-            # -p 3000:3000 maps VM Port 3000 to Container Port 3000
+            # 3. Pull the newly built image (using SHA tag for version tracking)
+            echo "Pulling new image with SHA: $COMMIT_SHA"
+            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/express-server:$COMMIT_SHA
+            sudo docker pull ${{ secrets.ACR_LOGIN_SERVER }}/nginx:$COMMIT_SHA
+
+            # 4. Start new express-server container with temporary name (keep old one running)
+            echo "Starting new express-server container..."
             sudo docker run -d \
-              --name express-server-container \
+              --name $NEW_CONTAINER_NAME \
               --network codeclash_net \
               -e PORT="${{ secrets.PORT }}" \
               -e CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}" \
@@ -81,13 +82,50 @@ jobs:
               -e CLOUDINARY_SECRET_KEY="${{ secrets.CLOUDINARY_SECRET_KEY }}" \
               -e RAPID_API_KEY="${{ secrets.RAPID_API_KEY }}" \
               -e CODECLASH_CODE_EXECUTION="${{ secrets.CODECLASH_CODE_EXECUTION }}" \
-              ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
+              ${{ secrets.ACR_LOGIN_SERVER }}/express-server:$COMMIT_SHA
 
+            # 5. Wait a few seconds and check if new container is running
+            echo "Waiting for new container to start..."
+            sleep 5
 
+            if sudo docker ps | grep -q $NEW_CONTAINER_NAME; then
+              echo "New container started successfully. Checking health..."
+              sleep 10
+              
+              # Check if container is still running (simple health check)
+              if sudo docker ps | grep -q $NEW_CONTAINER_NAME; then
+                echo "New container is healthy. Switching to new container..."
+                
+                # Stop and remove old container (if it exists)
+                sudo docker rm -f $OLD_CONTAINER_NAME || true
+                
+                # Rename new container to production name
+                sudo docker rename $NEW_CONTAINER_NAME $OLD_CONTAINER_NAME
+                
+                echo "Express-server deployment successful!"
+              else
+                echo "ERROR: New container stopped unexpectedly. Keeping old container running."
+                sudo docker rm -f $NEW_CONTAINER_NAME || true
+                exit 1
+              fi
+            else
+              echo "ERROR: Failed to start new container. Keeping old container running."
+              sudo docker rm -f $NEW_CONTAINER_NAME || true
+              exit 1
+            fi
+
+            # 6. Update nginx (less critical, can be done more safely)
+            echo "Updating nginx..."
+            sudo docker rm -f nginx || true
             sudo docker run -d \
               --name nginx \
               --network codeclash_net \
               -p 80:80 \
-              ${{ secrets.ACR_LOGIN_SERVER }}/nginx:latest
+              ${{ secrets.ACR_LOGIN_SERVER }}/nginx:$COMMIT_SHA
+
+            # 7. Clean up old images (keep last 2 versions)
+            echo "Cleaning up old images..."
+            sudo docker image prune -af --filter "until=24h" || true
 
             echo "Deployment Complete. Access your app at http://${{ secrets.VM_HOST }}:3000"
+            echo "Deployed commit SHA: $COMMIT_SHA"
