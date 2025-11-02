@@ -70,7 +70,7 @@ jobs:
               --name express-server-container \
               --network codeclash_net \
               -e PORT="${{ secrets.PORT }}" \
-              -e CORS_ORIGIN="${{ secrets.CORS_ORIGIN }}" \
+              -e CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}" \
               -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
               -e ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}" \
               -e ACCESS_TOKEN_EXPIRY="${{ secrets.ACCESS_TOKEN_EXPIRY }}" \
