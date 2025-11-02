@@ -37,6 +37,7 @@ services:
       - RAPID_API_KEY=${RAPID_API_KEY}
       - CODECLASH_CODE_EXECUTION=${CODECLASH_CODE_EXECUTION}
       - SIMULATE_CONTAINER_FAILURE=${SIMULATE_CONTAINER_FAILURE}
+      - REDIS_HOST=${REDIS_HOST:-redis}
     networks:
       - codeclash_net
     healthcheck:

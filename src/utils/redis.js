@@ -1,9 +1,11 @@
 import Redis from 'ioredis';
 
-const isProduction = process.env.NODE_ENV === 'production';
+// Use REDIS_HOST environment variable, default to 'redis' for Docker deployments
+// For local development without Docker, set REDIS_HOST=localhost
+const redisHost = process.env.REDIS_HOST || 'redis';
 
 export const redis = new Redis({
-  host: isProduction ? '127.0.0.1' : 'localhost',
+  host: redisHost,
   port: 6379,
 });
 

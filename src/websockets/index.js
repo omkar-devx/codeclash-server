@@ -6,8 +6,16 @@ import { ApiError } from '../utils/ApiError.js';
 
 class WebSocketService {
   constructor() {
-    this.pub = new Redis();
-    this.sub = new Redis();
+    // Use REDIS_HOST environment variable, default to 'redis' for Docker deployments
+    const redisHost = process.env.REDIS_HOST || 'redis';
+
+    const redisConfig = {
+      host: redisHost,
+      port: 6379,
+    };
+
+    this.pub = new Redis(redisConfig);
+    this.sub = new Redis(redisConfig);
 
     this.redisEventsCheck(this.pub, 'publisher');
     this.redisEventsCheck(this.sub, 'subscriber');
@@ -111,6 +119,7 @@ class WebSocketService {
       try {
         room = this.roomManager.getRoomFromRoomId(channel);
       } catch (e) {
+        console.error('Error getting room from room id:', e.message);
         console.warn(`Room ${channel} not found. Dropping message.`);
         return;
       }
