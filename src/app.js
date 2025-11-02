@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { serverStartTimeInstance } from './utils/uptime.js';
+import { redis } from './utils/redis.js';
 
 const app = express();
 
@@ -35,6 +36,24 @@ app.get('/', (req, res) => {
     message: 'OK',
     uptime: serverStartTimeInstance.getStartTime(),
   });
+});
+
+app.get('/health-redis', (req, res) => {
+  redis
+    .ping()
+    .then((result) => {
+      res.status(200).json({
+        message: 'OK',
+        result,
+      });
+    })
+    .catch((err) => {
+      console.error('Error pinging Redis:', err);
+      res.status(500).json({
+        message: 'Error',
+        error: err.message,
+      });
+    });
 });
 
 // router imports
