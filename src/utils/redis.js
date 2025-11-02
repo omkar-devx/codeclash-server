@@ -1,6 +1,11 @@
 import Redis from 'ioredis';
 
-export const redis = new Redis();
+const isProduction = process.env.NODE_ENV === 'production';
+
+export const redis = new Redis({
+  host: isProduction ? '127.0.0.1' : 'localhost',
+  port: 6379,
+});
 
 //  add user to room
 export const addUserToRoom = async (roomId, userId) => {
