@@ -41,6 +41,16 @@ jobs:
             ${{ secrets.ACR_LOGIN_SERVER }}/express-server:latest
             ${{ secrets.ACR_LOGIN_SERVER }}/express-server:${{ github.sha }}
 
+      - name: Copy docker-compose files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: 'docker-compose.yaml,docker-compose.prod.yml'
+          target: '/tmp/docker-compose'
+          strip_components: 0
+
       - name: Deploy to Azure VM via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -52,6 +62,7 @@ jobs:
             echo "Deployment sequence started on VM..."
             COMMIT_SHA="${{ github.sha }}"
             ACR_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+            DEPLOY_DIR="/tmp/docker-compose"
 
             # 1. Log in to ACR on the VM to authenticate pull
             sudo docker login $ACR_SERVER -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }}
@@ -65,17 +76,9 @@ jobs:
             sudo docker tag $ACR_SERVER/express-server:$COMMIT_SHA $ACR_SERVER/express-server:latest
             sudo docker tag $ACR_SERVER/nginx:$COMMIT_SHA $ACR_SERVER/nginx:latest
 
-            # 4. Navigate to project directory (ensure docker-compose files are available)
-            REPO_DIR=~/codeclash-server
-            if [ ! -d "$REPO_DIR" ]; then
-              REPO_DIR=/opt/codeclash-server
-              if [ ! -d "$REPO_DIR" ]; then
-                echo "Repository directory not found. Please ensure the repository is cloned at ~/codeclash-server or /opt/codeclash-server"
-                exit 1
-              fi
-            fi
-            cd $REPO_DIR
-            echo "Using repository directory: $REPO_DIR"
+            # 4. Navigate to directory with docker-compose files
+            cd $DEPLOY_DIR
+            echo "Using deployment directory: $DEPLOY_DIR"
 
             # 5. Export environment variables for docker-compose
             export PORT="${{ secrets.PORT }}"
@@ -95,11 +98,11 @@ jobs:
 
             # 6. Stop existing containers gracefully
             echo "Stopping existing containers..."
-            sudo -E docker-compose -f docker-compose.yaml -f docker-compose.prod.yml down || true
+            sudo -E docker-compose -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml down || true
 
             # 7. Start services with docker-compose (merges base + prod override)
             echo "Starting services with docker-compose..."
-            sudo -E docker-compose -f docker-compose.yaml -f docker-compose.prod.yml up -d
+            sudo -E docker-compose -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml up -d
 
             # 8. Wait for services to be healthy
             echo "Waiting for services to be healthy..."
@@ -110,7 +113,7 @@ jobs:
               echo "All containers started successfully!"
             else
               echo "ERROR: Some containers failed to start. Checking logs..."
-              sudo -E docker-compose -f docker-compose.yaml -f docker-compose.prod.yml logs
+              sudo -E docker-compose -f $DEPLOY_DIR/docker-compose.yaml -f $DEPLOY_DIR/docker-compose.prod.yml logs
               exit 1
             fi
 
