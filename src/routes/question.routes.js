@@ -23,7 +23,7 @@ const router = Router();
 router.route('/problemset').get(problemset);
 router.route('/search').get(searchQuestions);
 router.route('/id/:id').get(questionById);
-router.route('/issubmit/:id').get(isQuestionSubmitted);
+router.route('/issubmit/:id').get(verifyJWT, isQuestionSubmitted);
 router.route('/submission/:sid').get(getSubmissionById);
 router.route('/getsolution/:id').get(getQuestionSolution);
 //post

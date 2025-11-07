@@ -405,6 +405,11 @@ const searchQuestions = asyncHandler(async (req, res) => {
 });
 
 const isQuestionSubmitted = asyncHandler(async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    throw new ApiError(400, 'User is not found');
+  }
+
   const id = Number(req.params.id);
   if (!id && typeof id !== 'number') {
     throw new ApiError(400, 'question id is not found!!!');
@@ -416,7 +421,10 @@ const isQuestionSubmitted = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'question is not found on given id');
   }
 
-  const submission = await Submission.findOne({ questionUId: id });
+  const submission = await Submission.findOne({
+    userId: user._id,
+    questionUId: id,
+  });
   // console.log(submission);
   return res
     .status(200)
